@@ -13,5 +13,9 @@
 
 (facts "Identify gene regions with minimal sequencing coverage"
   (let [params {:coverage 10
-                :block 10}]
-    (gene/problem-coverage bam-file gene-bed params)) => nil)
+                :block {:min 20 :distance 5}}
+        bases [1 3 4 5 8 10 11 14]]
+    (gene/split-into-blocks 3 bases) => [[1 3 4 5 8 10 11 14]]
+    (gene/split-into-blocks 2 bases) => [[1 3 4 5] [8 10 11] [14]]
+    (gene/split-into-blocks 1 bases) => [[1] [3 4 5] [8] [10 11] [14]]
+    (gene/problem-coverage bam-file gene-bed params) => nil))

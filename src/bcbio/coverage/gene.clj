@@ -42,6 +42,30 @@
                  :bam (bam/get-bam-source in-file))]
     (CoverageRetriever. ftype source)))
 
+(defn split-into-blocks
+  "Split a sequence of positions into blocks of consecutive items within n bases."
+  [n in-xs]
+  (loop [xs (sort in-xs)
+         cur-block []
+         final []]
+    (cond
+     (empty? xs)
+     (conj final cur-block)
+     (or (empty? cur-block)
+         (<= (- (first xs) (last cur-block)) n))
+     (recur (rest xs) (conj cur-block (first xs)) final)
+     :else
+     (recur (rest xs) [(first xs)] (conj final cur-block)))))
+
+(defn- identify-nocoverage-blocks
+  "Extract blocks of nocoverage bases from raw positions"
+  [cov-by-pos params]
+  (->> (keys cov-by-pos)
+       (split-into-blocks (get-in params [:block :distance]))
+       (remove empty?)
+       (map (juxt first last))
+       (filter (fn [[s e]] (> (- e s) (get-in params [:block :min]))))))
+
 (defn region-problem-coverage
   "Calculate stats for problematic coverage in a chromosome region."
   [retriever contig start end params]
@@ -52,6 +76,7 @@
                                  coll)))
                            {} (range start end))]
     {:count (count cov-by-pos)
+     :blocks (identify-nocoverage-blocks cov-by-pos params)
      :size (- end start)}))
 
 (defn gene-problem-coverage
@@ -60,11 +85,19 @@
   (let [regions (map #(region-problem-coverage retriever (:chr %) (:start %) (:end %) params)
                      coords)]
     {:name (-> coords first :name)
+     :coords (map #(select-keys % [:chr :start :end]) coords)
+     :blocks (mapcat :blocks regions)
+     :size (apply + (map :size regions))
      :percent-nocoverage (* 100.0 (/ (apply + (map :count regions))
                                      (apply + (map :size regions))))}))
 
 (defn problem-coverage
-  "Identify problematic coverage for all supplied gene regions."
+  "Identify problematic coverage for all supplied gene regions.
+   params is a map of attributes to influence what we identify
+    :coverage - Minimum coverage required for a position to be considered covered.
+    :block - Map of parameters for calculating blocks of nocoverage
+      :min - Minimum size of a block to report
+      :distance - Allowed distance between nocoverage bases to be considered in a block"
   [coverage-file gene-file params]
   (let [retriever (get-coverage-retriever coverage-file)]
     (with-open [rdr (io/reader gene-file)]
@@ -76,4 +109,5 @@
     (when (not= (count args) 2)
       (println "Usage: gene <BAM or BED coverage file> <BED file of gene regions>")
       (System/exit 1))
-    (apply problem-coverage args)))
+    (apply problem-coverage (concat args [{:coverage 10
+                                           :block {:min 50 :distance 5}}]))))
