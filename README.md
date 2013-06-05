@@ -9,7 +9,7 @@ coverage issues.
 
 The inputs are:
 
-- BED file of coverage or BAM file from which we can calculate coverage.
+- BigWig file of coverage or BAM file from which we can calculate coverage.
 - BED file or list of gene identifiers of genes of interest.
 
 and it outputs:

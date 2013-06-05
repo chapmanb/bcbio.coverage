@@ -5,7 +5,8 @@
             [clojure.tools.cli :refer [cli]]
             [me.raynes.fs :as fs]
             [bcbio.coverage.io.bam :as bam]
-            [bcbio.coverage.io.bed :as bed]))
+            [bcbio.coverage.io.bed :as bed]
+            [bcbio.coverage.io.bigwig :as bigwig]))
 
 ;; ## Coverage retrieval
 
@@ -13,9 +14,14 @@
   "Retrieve coverage, dispatching on type of input file."
   (fn [ftype & args] ftype))
 
-(defmethod get-coverage* :bed
-  ^{:doc "Retrieve coverage at a position from a BED file of by-position coverage"}
-  [_ source contig pos])
+(defmethod get-coverage* :bw
+  ^{:doc "Retrieve coverage at a position from a BigWig file of by-position coverage"}
+  [_ source contig pos]
+  (let [bw-item (first (iterator-seq
+                        (.getBigWigIterator source contig pos contig (inc pos) false)))]
+    (if bw-item
+      (.getWigValue bw-item)
+      0)))
 
 (defmethod get-coverage* :bam
   ^{:doc "Retrieve position coverage directly from a BAM file"}
@@ -39,7 +45,8 @@
   [in-file]
   (let [ftype (-> in-file fs/extension string/lower-case (subs 1) keyword)
         source (case ftype
-                 :bam (bam/get-bam-source in-file))]
+                 :bam (bam/get-bam-source in-file)
+                 :bw (bigwig/get-source in-file))]
     (CoverageRetriever. ftype source)))
 
 (defn split-into-blocks
@@ -107,7 +114,7 @@
 (defn -main [& args]
   (let [[options args banner] (cli args)]
     (when (not= (count args) 2)
-      (println "Usage: gene <BAM or BED coverage file> <BED file of gene regions>")
+      (println "Usage: gene <BAM or BigWig coverage file> <BED file of gene regions>")
       (System/exit 1))
     (apply problem-coverage (concat args [{:coverage 10
                                            :block {:min 50 :distance 5}}]))))
