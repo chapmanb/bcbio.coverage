@@ -7,8 +7,10 @@
                  [org.clojars.chapmanb/picard "1.90"]
                  [org.clojars.chapmanb/sam "1.90"]
                  [org.clojars.chapmanb/tribble "1.90"]
+                 [org.clojars.chapmanb/bigwig "r39"]
                  [de.kotka/lazymap "3.1.1"]
-                 [me.raynes/fs "1.4.3"]]
+                 [me.raynes/fs "1.4.3"]
+                 [ordered "1.3.2" :exclusions [org.clojure/clojure]]]
   :plugins [[lein-midje "3.0.1"]]
   :profiles {:dev {:dependencies
                    [[midje "1.5.1"]]}}

@@ -19,6 +19,14 @@ and it outputs:
 
 Longer term goals include handling non-coding region prioritization.
 
+## Resources
+
+- Average coverage data for exomes from the [NHLBI Exome Sequencing Project (ESP)][esp]
+  converted into BigWig format: [ESP6500SI-V2-coverage.bw][esp-bw].
+
+[esp]: http://evs.gs.washington.edu/EVS/
+[esp-bw]: https://s3.amazonaws.com/biodata/coverage/ESP6500SI-V2-coverage.bw
+
 ## License
 
 The code is freely available under the [MIT license][l1].
