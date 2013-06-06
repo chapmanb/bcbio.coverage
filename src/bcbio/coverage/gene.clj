@@ -4,9 +4,42 @@
             [clojure.string :as string]
             [clojure.tools.cli :refer [cli]]
             [me.raynes.fs :as fs]
+            [org.bioclojure.bio.ensembl.core :as ens]
             [bcbio.coverage.io.bam :as bam]
             [bcbio.coverage.io.bed :as bed]
-            [bcbio.coverage.io.bigwig :as bigwig]))
+            [bcbio.coverage.io.bigwig :as bigwig]
+            [bcbio.run.itx :as itx]))
+
+;; ## Regions from gene names
+
+(defn- fetch-coding-coords
+  "Retrieve a flattened set of coordinates for coding regions attached to a gene."
+  [gene-name params]
+  (let [species (get params :species "human")
+        gene (first (ens/gene-name->genes species gene-name))
+        coords (mapcat ens/transcript->exon-coords (ens/gene-transcripts gene))]
+    (bed/merge-intervals coords)))
+
+(defn- genes->coding-bed
+  "Convert a file of gene names into a BED file with coding coordinates."
+  [gene-file params]
+  (let [bed-file (str (itx/file-root gene-file) "-exons.bed")]
+    (when (itx/needs-run? bed-file)
+      (with-open [rdr (io/reader gene-file)
+                  wtr (io/writer bed-file)]
+        (ens/with-registry (ens/registry :ensembldb)
+          (doseq [gene-name (map #(-> % (string/split #"\s+") first string/trimr) (line-seq rdr))]
+            (doseq [coord (fetch-coding-coords gene-name params)]
+              (.write wtr (format "%s\t%s\t%s\t%s\n"
+                                  (:chr coord) (dec (:start coord)) (:end coord) gene-name)))))))
+    bed-file))
+
+(defn get-coord-bed
+  "Retrieve a BED file of coordinates, handling gene name or coordinate input."
+  [in-file params]
+  (if (bed/is-bed? in-file)
+    in-file
+    (genes->coding-bed in-file params)))
 
 ;; ## Coverage retrieval
 
@@ -104,10 +137,12 @@
     :coverage - Minimum coverage required for a position to be considered covered.
     :block - Map of parameters for calculating blocks of nocoverage
       :min - Minimum size of a block to report
-      :distance - Allowed distance between nocoverage bases to be considered in a block"
+      :distance - Allowed distance between nocoverage bases to be considered in a block
+    :organism - Organism Ensembl name"
   [coverage-file gene-file params]
-  (let [retriever (get-coverage-retriever coverage-file)]
-    (with-open [rdr (io/reader gene-file)]
+  (let [retriever (get-coverage-retriever coverage-file)
+        gene-coord-file (get-coord-bed gene-file params)]
+    (with-open [rdr (io/reader gene-coord-file)]
       (doseq [coords (map second (group-by :name (bed/get-iterator rdr)))]
         (println (gene-problem-coverage retriever coords params))))))
 
