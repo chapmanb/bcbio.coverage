@@ -10,6 +10,7 @@
                  [org.clojars.chapmanb/tribble "1.90"]
                  [org.clojars.chapmanb/variant "1.90"]
                  [org.clojars.intronic/bio.ensembl "0.1.1-SNAPSHOT"]
+                 [incanter/incanter-core "1.4.1"]
                  [log4j "1.2.17"]
                  [de.kotka/lazymap "3.1.1"]
                  [me.raynes/fs "1.4.3"]

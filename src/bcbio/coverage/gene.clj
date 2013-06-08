@@ -3,6 +3,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :refer [cli]]
+            [incanter.stats :as istat]
             [me.raynes.fs :as fs]
             [org.bioclojure.bio.ensembl.core :as ens]
             [bcbio.coverage.io.bam :as bam]
@@ -73,14 +74,42 @@
   (close [_]
     (.close source)))
 
-(defn get-coverage-retriever
-  "Get a retriever that calculates coverage per position, handling multiple input types."
+(defrecord PopCoverageRetriever [ftype sources]
+  RetrieveCoverage
+  (get-coverage [_ contig pos]
+    (istat/median (map #(get-coverage* ftype % contig pos))))
+  java.io.Closeable
+  (close [_]
+    (doseq [x sources]
+      (.close x))))
+
+(defmulti get-coverage-retriever class)
+
+(defn- ext->ftype
+  "Extract file type to process from input file extension"
   [in-file]
-  (let [ftype (-> in-file fs/extension string/lower-case (subs 1) keyword)
-        source (case ftype
-                 :bam (bam/get-bam-source in-file)
-                 :bw (bigwig/get-source in-file))]
+  (-> in-file fs/extension string/lower-case (subs 1) keyword))
+
+(defn- get-source
+  [in-file ftype]
+  (case ftype
+    :bam (bam/get-bam-source in-file)
+    :bw (bigwig/get-source in-file)))
+
+(defmethod get-coverage-retriever java.lang.String
+  ^{:doc "Get a retriever that calculates coverage per position, handling alternative file types."}
+  [in-file]
+  (let [ftype (ext->ftype in-file)
+        source (get-source in-file ftype)]
     (CoverageRetriever. ftype source)))
+
+(defmethod get-coverage-retriever clojure.lang.Seqable
+  ^{:doc "Prepare a retriever calculating the average over multiple input files."}
+  [in-files]
+  (let [ftypes (set (map ext->ftype in-files))]
+    (if (> (count (ftypes)) 1)
+      (throw (Exception. "Cannot retrieve from multiple heterogeneous input sources."))
+      (PopCoverageRetriever. (first ftypes) (map #(get-source % (first ftypes)) in-files)))))
 
 (defn split-into-blocks
   "Split a sequence of positions into blocks of consecutive items within n bases."
@@ -139,8 +168,8 @@
       :min - Minimum size of a block to report
       :distance - Allowed distance between nocoverage bases to be considered in a block
     :organism - Organism Ensembl name"
-  [coverage-file gene-file params]
-  (let [retriever (get-coverage-retriever coverage-file)
+  [coverage-input gene-file params]
+  (let [retriever (get-coverage-retriever coverage-input)
         gene-coord-file (get-coord-bed gene-file params)]
     (with-open [rdr (io/reader gene-coord-file)]
       (doseq [coords (map second (group-by :name (bed/get-iterator rdr)))]
