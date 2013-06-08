@@ -4,6 +4,7 @@
             [midje.sweet :refer :all]
             [bcbio.coverage.gene :as gene]
             [bcbio.coverage.io.bed :as bed]
+            [bcbio.coverage.source.esp :as esp]
             [bcbio.run.itx :as itx]))
 
 (background
@@ -42,3 +43,10 @@
                         [{:chr "A" :start 1 :end 5}
                          {:chr "A" :start 7 :end 9}
                          {:chr "B" :start 1 :end 3}])
+
+(facts "Extract variants from ESP by region and allele frequency"
+  (let [esp-vcf-file (str (io/file data-dir "esp-snps_indels.vcf"))
+        ref-file (str (io/file data-dir "GRCh37.fa"))
+        vcs (esp/variants-in-region esp-vcf-file ref-file
+                                    {:chr "22" :start 6900 :end 7300} 1.0)]
+    (map (juxt :chr :start) vcs) => [["22" 6920] ["22" 7226]]))

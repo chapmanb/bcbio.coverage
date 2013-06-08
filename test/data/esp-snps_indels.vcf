@@ -1,0 +1,40 @@
+##fileformat=VCFv4.0
+##INFO=<ID=DBSNP,Number=.,Type=String,Description="dbSNP version which established the rs_id">
+##INFO=<ID=EA_AC,Number=.,Type=String,Description="European American Allele Count in the order of AltAlleles,RefAllele. For INDELs, A1, A2, or An refers to the N-th alternate allele while R refers to the reference allele.">
+##INFO=<ID=AA_AC,Number=.,Type=String,Description="African American Allele Count in the order of AltAlleles,RefAllele. For INDELs, A1, A2, or An refers to the N-th alternate allele while R refers to the reference allele.">
+##INFO=<ID=TAC,Number=.,Type=String,Description="Total Allele Count in the order of AltAlleles,RefAllele For INDELs, A1, A2, or An refers to the N-th alternate allele while R refers to the reference allele.">
+##INFO=<ID=MAF,Number=.,Type=String,Description="Minor Allele Frequency in percent in the order of EA,AA,All">
+##INFO=<ID=GTS,Number=.,Type=String,Description="Observed Genotypes. For INDELs, A1, A2, or An refers to the N-th alternate allele while R refers to the reference allele.">
+##INFO=<ID=EA_GTC,Number=.,Type=String,Description="European American Genotype Counts in the order of listed GTS">
+##INFO=<ID=AA_GTC,Number=.,Type=String,Description="African American Genotype Counts in the order of listed GTS">
+##INFO=<ID=GTC,Number=.,Type=String,Description="Total Genotype Counts in the order of listed GTS">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Average Sample Read Depth">
+##INFO=<ID=FG,Number=.,Type=String,Description="functionGVS">
+##INFO=<ID=GM,Number=.,Type=String,Description="accession">
+##INFO=<ID=AA,Number=1,Type=String,Description="chimpAllele">
+##INFO=<ID=AAC,Number=.,Type=String,Description="aminoAcidChange">
+##INFO=<ID=PP,Number=.,Type=String,Description="proteinPosition">
+##INFO=<ID=CDP,Number=.,Type=String,Description="cDNAPosition">
+##INFO=<ID=PH,Number=.,Type=String,Description="polyPhen">
+##INFO=<ID=CP,Number=1,Type=Float,Description="scorePhastCons">
+##INFO=<ID=CG,Number=1,Type=Float,Description="consScoreGERP">
+##INFO=<ID=GL,Number=.,Type=String,Description="geneList">
+##INFO=<ID=GS,Number=.,Type=String,Description="granthamScore">
+##INFO=<ID=CA,Number=.,Type=String,Description="clinicalAssociation">
+##INFO=<ID=EXOME_CHIP,Number=.,Type=String,Description="Whether a SNP is on the Illumina HumanExome Chip">
+##FILTER=<ID=INDEL5,Description="Nearby 1000 Genomes Pilot Indels within 5bp">
+##FILTER=<ID=SVM,Description="Failed SVM-based filter at threshold 0.3. (detailed at http://evs.gs.washington.edu/EVS/HelpSNPSummary.jsp#FilterStatus)">
+##INFO=<ID=GWAS_PUBMED,Number=.,Type=String,Description="PubMed records for GWAS hits">
+##INFO=<ID=EA_AGE,Number=.,Type=String,Description="Esitmated Variant Age in kilo years for the European American Population">
+##INFO=<ID=AA_AGE,Number=.,Type=String,Description="Esitmated Variant Age in kilo years for the African American Population">
+##QueryTarget=22:1-51304566
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+22	6920	.	C	CAG	.	PASS	DBSNP=.;EA_AC=1018,1984;AA_AC=369,1027;TAC=1387,3011;MAF=33.9107,26.4327,31.5371;GTS=A1A1,A1R,RR;EA_GTC=3,1012,486;AA_GTC=1,367,330;GTC=4,1379,816;DP=1;GL=POTEH;CP=0.0;CG=-2.8;AA=.;CA=.;EXOME_CHIP=no;GWAS_PUBMED=.;GM=NM_001136213.1;FG=intron;AAC=.;PP=.;CDP=.;GS=.;PH=.;EA_AGE=.;AA_AGE=.
+22	7050	.	G	A	.	PASS	DBSNP=.;EA_AC=0,3182;AA_AC=3,1381;TAC=3,4563;MAF=0.0,0.2168,0.0657;GTS=AA,AG,GG;EA_GTC=0,0,1591;AA_GTC=0,3,689;GTC=0,3,2280;DP=451;GL=POTEH;CP=0.0;CG=-1.4;AA=G;CA=.;EXOME_CHIP=no;GWAS_PUBMED=.;GM=NM_001136213.1;FG=missense;AAC=SER/PRO;PP=467/546;CDP=1399;GS=74;PH=benign;EA_AGE=.;AA_AGE=.
+22	7215	rs142611479	C	T	.	PASS	DBSNP=dbSNP_134;EA_AC=0,7532;AA_AC=63,3885;TAC=63,11417;MAF=0.0,1.5957,0.5488;GTS=TT,TC,CC;EA_GTC=0,0,3766;AA_GTC=0,63,1911;GTC=0,63,5677;DP=37;GL=POTEH;CP=0.0;CG=0.6;AA=C;CA=.;EXOME_CHIP=no;GWAS_PUBMED=.;GM=NM_001136213.1;FG=intron;AAC=.;PP=.;CDP=.;GS=.;PH=.;EA_AGE=.;AA_AGE=.
+22	7226	.	C	T	.	PASS	DBSNP=.;EA_AC=127,7389;AA_AC=22,3902;TAC=149,11291;MAF=1.6897,0.5607,1.3024;GTS=TT,TC,CC;EA_GTC=12,103,3643;AA_GTC=2,18,1942;GTC=14,121,5585;DP=33;GL=POTEH;CP=0.0;CG=1.0;AA=C;CA=.;EXOME_CHIP=no;GWAS_PUBMED=.;GM=NM_001136213.1;FG=intron;AAC=.;PP=.;CDP=.;GS=.;PH=.;EA_AGE=.;AA_AGE=.
+22	7241	.	C	T	.	PASS	DBSNP=.;EA_AC=0,7416;AA_AC=7,3877;TAC=7,11293;MAF=0.0,0.1802,0.0619;GTS=TT,TC,CC;EA_GTC=0,0,3708;AA_GTC=1,5,1936;GTC=1,5,5644;DP=29;GL=POTEH;CP=0.0;CG=0.2;AA=C;CA=.;EXOME_CHIP=no;GWAS_PUBMED=.;GM=NM_001136213.1;FG=intron;AAC=.;PP=.;CDP=.;GS=.;PH=.;EA_AGE=.;AA_AGE=.
+22	7243	.	G	C	.	PASS	DBSNP=.;EA_AC=0,7434;AA_AC=14,3866;TAC=14,11300;MAF=0.0,0.3608,0.1237;GTS=CC,CG,GG;EA_GTC=0,0,3717;AA_GTC=2,10,1928;GTC=2,10,5645;DP=28;GL=POTEH;CP=0.0;CG=1.4;AA=G;CA=.;EXOME_CHIP=no;GWAS_PUBMED=.;GM=NM_001136213.1;FG=intron;AAC=.;PP=.;CDP=.;GS=.;PH=.;EA_AGE=.;AA_AGE=.
+22	7246	.	C	A	.	PASS	DBSNP=.;EA_AC=0,7430;AA_AC=6,3878;TAC=6,11308;MAF=0.0,0.1545,0.053;GTS=AA,AC,CC;EA_GTC=0,0,3715;AA_GTC=0,6,1936;GTC=0,6,5651;DP=28;GL=POTEH;CP=0.0;CG=-2.8;AA=C;CA=.;EXOME_CHIP=no;GWAS_PUBMED=.;GM=NM_001136213.1;FG=intron;AAC=.;PP=.;CDP=.;GS=.;PH=.;EA_AGE=.;AA_AGE=.
+22	7280	.	GTC	G	.	PASS	DBSNP=.;EA_AC=7,6565;AA_AC=11,3533;TAC=18,10098;MAF=0.1065,0.3104,0.1779;GTS=A1A1,A1R,RR;EA_GTC=1,5,3280;AA_GTC=2,7,1763;GTC=3,12,5043;DP=22;GL=POTEH;CP=0.0;CG=-1.2;AA=.;CA=.;EXOME_CHIP=no;GWAS_PUBMED=.;GM=NM_001136213.1;FG=frameshift;AAC=.;PP=.;CDP=.;GS=.;PH=.;EA_AGE=.;AA_AGE=.
+22	7337	.	A	G	.	PASS	DBSNP=.;EA_AC=0,7246;AA_AC=2,3780;TAC=2,11026;MAF=0.0,0.0529,0.0181;GTS=GG,GA,AA;EA_GTC=0,0,3623;AA_GTC=0,2,1889;GTC=0,2,5512;DP=14;GL=POTEH;CP=0.5;CG=-0.0;AA=A;CA=.;EXOME_CHIP=no;GWAS_PUBMED=.;GM=NM_001136213.1;FG=coding-synonymous;AAC=.;PP=183/546;CDP=549;GS=.;PH=.;EA_AGE=.;AA_AGE=.

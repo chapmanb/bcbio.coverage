@@ -6,7 +6,8 @@
             [clojure.java.shell :as shell]
             [me.raynes.fs :as fs]
             [bcbio.align.gref :as gref]
-            [bcbio.run.itx :as itx]))
+            [bcbio.run.itx :as itx]
+            [bcbio.variation.variantcontext :as gvc]))
 
 ;; ## ESP coverage
 
@@ -51,3 +52,20 @@
    http://evs.gs.washington.edu/evs_bulk_data/ESP6500SI-V2.coverage.all_sites.txt.tar.gz"
   [esp-dir ref-file]
   (wig->bigwig (coverage->wig esp-dir) ref-file))
+
+;; ## ESP variants
+
+(defn- above-maf?
+  "Check if a variant is above a minimum threshold allele frequency.
+   In ESP VCF files, the global (All) frequency is the last attribute
+   in the MAF INFO field."
+  [min-maf vc]
+  (>= (Float/parseFloat (last (get-in vc [:attributes "MAF"])))
+      min-maf))
+
+(defn variants-in-region
+  "Retrieve variants in a genomic region with a minimum allele frequency."
+  [vcf-file ref-file region min-maf]
+  (with-open [vcf-get (gvc/get-vcf-retriever ref-file vcf-file)]
+    (filter (partial above-maf? min-maf)
+            (gvc/variants-in-region vcf-get region))))
