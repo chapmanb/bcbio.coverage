@@ -1,0 +1,16 @@
+# Comparison of population whole genome sequencing data to summarized ESP coverage
+---
+approach: compare
+regions: gene-list.txt
+experiments:
+  - name: bcwgs
+    samples:
+      - name: S1
+        coverage: *.bam
+        variant: *.vcf
+  - name: ESP
+    samples:
+      - name: ESP
+        type: esp
+        coverage: *.bw
+        variant: *.vcf
