@@ -5,6 +5,7 @@
             [bcbio.coverage.gene :as gene]
             [bcbio.coverage.io.bed :as bed]
             [bcbio.coverage.source.esp :as esp]
+            [bcbio.coverage.workflow.wgsexome :as wgsexome]
             [bcbio.run.itx :as itx]))
 
 (background
@@ -50,3 +51,6 @@
         vcs (esp/variants-in-region esp-vcf-file ref-file
                                     {:chr "22" :start 6900 :end 7300} 1.0)]
     (map (juxt :chr :start) vcs) => [["22" 6920] ["22" 7226]]))
+
+(facts "Compare whole genome and exome coverage"
+  (wgsexome/compare-from-config "test/data/wgsexome-compare.yaml") => nil)

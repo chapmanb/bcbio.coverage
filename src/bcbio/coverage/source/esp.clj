@@ -67,5 +67,5 @@
   "Retrieve variants in a genomic region with a minimum allele frequency."
   [vcf-file ref-file region min-maf]
   (with-open [vcf-get (gvc/get-vcf-retriever ref-file vcf-file)]
-    (filter (partial above-maf? min-maf)
-            (gvc/variants-in-region vcf-get region))))
+    (vec (filter (partial above-maf? min-maf)
+                 (gvc/variants-in-region vcf-get region)))))

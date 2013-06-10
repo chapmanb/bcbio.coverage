@@ -1,0 +1,21 @@
+# Testing comparison for Whole Genome and exome comparisons
+---
+params:
+  species: human
+  maf-thresh: 1.0
+  coverage: 10
+  block:
+    min: 100
+    distance: 10
+regions: test/data/gene-regions.bed
+ref-file: test/data/GRCh37.fa
+experiments:
+  - variant: test/data/gatk-calls.vcf
+    samples:
+      - name: Test1
+        coverage: test/data/aligned-reads.bam
+  - type: esp
+    variant: test/data/esp-snps_indels.vcf
+    samples:
+      - name: esp
+        coverage: test/data/esp-coverage.bw

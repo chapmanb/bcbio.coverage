@@ -83,7 +83,7 @@
     (doseq [x sources]
       (.close x))))
 
-(defmulti get-coverage-retriever class)
+(defmulti get-coverage-retriever* class)
 
 (defn- ext->ftype
   "Extract file type to process from input file extension"
@@ -96,20 +96,29 @@
     :bam (bam/get-bam-source in-file)
     :bw (bigwig/get-source in-file)))
 
-(defmethod get-coverage-retriever java.lang.String
+(defmethod get-coverage-retriever* java.lang.String
   ^{:doc "Get a retriever that calculates coverage per position, handling alternative file types."}
   [in-file]
   (let [ftype (ext->ftype in-file)
         source (get-source in-file ftype)]
     (CoverageRetriever. ftype source)))
 
-(defmethod get-coverage-retriever clojure.lang.Seqable
+(defmethod get-coverage-retriever* clojure.lang.Seqable
   ^{:doc "Prepare a retriever calculating the average over multiple input files."}
   [in-files]
   (let [ftypes (set (map ext->ftype in-files))]
     (if (> (count (ftypes)) 1)
       (throw (Exception. "Cannot retrieve from multiple heterogeneous input sources."))
       (PopCoverageRetriever. (first ftypes) (map #(get-source % (first ftypes)) in-files)))))
+
+(defn get-coverage-retriever
+  "Retrieve coverage, handling multiple input files and different coverage types."
+  [file-info]
+  (let [test-file (if (and (not (instance? java.lang.String file-info))
+                           (= 1 (count file-info)))
+                    (first file-info)
+                    file-info)]
+    (get-coverage-retriever* test-file)))
 
 (defn split-into-blocks
   "Split a sequence of positions into blocks of consecutive items within n bases."
@@ -130,22 +139,23 @@
   "Extract blocks of nocoverage bases from raw positions"
   [cov-by-pos params]
   (->> (keys cov-by-pos)
-       (split-into-blocks (get-in params [:block :distance]))
+       (split-into-blocks (get-in params [:block :distance] 100.0))
        (remove empty?)
        (map (juxt first last))
-       (filter (fn [[s e]] (> (- e s) (get-in params [:block :min]))))))
+       (filter (fn [[s e]] (> (- e s) (get-in params [:block :min] 10.0))))))
 
 (defn region-problem-coverage
   "Calculate stats for problematic coverage in a chromosome region."
   [retriever contig start end params]
-  (let [cov-by-pos (reduce (fn [coll i]
-                             (let [n (get-coverage retriever contig i)]
-                               (if (< n (:coverage params))
-                                 (assoc coll i n)
-                                 coll)))
-                           {} (range start end))]
-    {:count (count cov-by-pos)
-     :blocks (identify-nocoverage-blocks cov-by-pos params)
+  (let [cov (reduce (fn [coll i]
+                      (let [n (get-coverage retriever contig i)]
+                        (if (< n (:coverage params 10.0))
+                          (assoc-in coll [:low i] n)
+                          (assoc-in coll [:high i] n))))
+                    {:high {} :low {}} (range start end))]
+    {:count (count (:low cov))
+     :blocks (identify-nocoverage-blocks (:low cov) params)
+     :coverages (concat (vals (:high cov)) (vals (:low cov)))
      :size (- end start)}))
 
 (defn gene-problem-coverage
@@ -155,6 +165,7 @@
                      coords)]
     {:name (-> coords first :name)
      :coords (map #(select-keys % [:chr :start :end]) coords)
+     :avg-reads (istat/mean (mapcat :coverages regions))
      :blocks (mapcat :blocks regions)
      :size (apply + (map :size regions))
      :percent-nocoverage (* 100.0 (/ (apply + (map :count regions))
