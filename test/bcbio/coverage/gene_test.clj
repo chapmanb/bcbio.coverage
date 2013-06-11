@@ -53,4 +53,5 @@
     (map (juxt :chr :start) vcs) => [["22" 6920] ["22" 7226]]))
 
 (facts "Compare whole genome and exome coverage"
-  (wgsexome/compare-from-config "test/data/wgsexome-compare.yaml") => nil)
+  (let [wgs-config (str (io/file data-dir "wgsexome-compare.yaml"))]
+    (wgsexome/compare-from-config wgs-config)) => nil)

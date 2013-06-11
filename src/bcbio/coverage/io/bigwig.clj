@@ -4,4 +4,5 @@
 
 (defn get-source
   [bw-file]
-  (BBFileReader. bw-file))
+  (proxy [BBFileReader java.io.Closeable] [bw-file]
+    (close [])))

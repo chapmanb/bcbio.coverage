@@ -180,9 +180,9 @@
       :distance - Allowed distance between nocoverage bases to be considered in a block
     :organism - Organism Ensembl name"
   [coverage-input gene-file params]
-  (let [retriever (get-coverage-retriever coverage-input)
-        gene-coord-file (get-coord-bed gene-file params)]
-    (with-open [rdr (io/reader gene-coord-file)]
+  (let [gene-coord-file (get-coord-bed gene-file params)]
+    (with-open [retriever (get-coverage-retriever coverage-input)
+                rdr (io/reader gene-coord-file)]
       (doseq [coords (map second (group-by :name (bed/get-iterator rdr)))]
         (println (gene-problem-coverage retriever coords params))))))
 
