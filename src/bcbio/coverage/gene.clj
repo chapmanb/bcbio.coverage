@@ -16,10 +16,12 @@
 (defn- fetch-coding-coords
   "Retrieve a flattened set of coordinates for coding regions attached to a gene."
   [gene-name params]
-  (let [species (get params :species "human")
-        gene (first (ens/gene-name->genes species gene-name))
-        coords (mapcat ens/transcript->exon-coords (ens/gene-transcripts gene))]
-    (bed/merge-intervals coords)))
+  (if-let [gene (first (ens/gene-name->genes (get params :species "human") gene-name))]
+    (->> gene
+         ens/gene-transcripts
+         (mapcat ens/transcript->exon-coords)
+         bed/merge-intervals)
+    (throw (Exception. (format "Did not find Gene information for %s in Ensembl" gene-name)))))
 
 (defn- genes->coding-bed
   "Convert a file of gene names into a BED file with coding coordinates."
@@ -77,7 +79,7 @@
 (defrecord PopCoverageRetriever [ftype sources]
   RetrieveCoverage
   (get-coverage [_ contig pos]
-    (istat/median (map #(get-coverage* ftype % contig pos))))
+    (istat/median (map #(get-coverage* ftype % contig pos) sources)))
   java.io.Closeable
   (close [_]
     (doseq [x sources]
@@ -107,7 +109,7 @@
   ^{:doc "Prepare a retriever calculating the average over multiple input files."}
   [in-files]
   (let [ftypes (set (map ext->ftype in-files))]
-    (if (> (count (ftypes)) 1)
+    (if (> (count ftypes) 1)
       (throw (Exception. "Cannot retrieve from multiple heterogeneous input sources."))
       (PopCoverageRetriever. (first ftypes) (map #(get-source % (first ftypes)) in-files)))))
 
