@@ -12,6 +12,17 @@
             [bcbio.coverage.io.bigwig :as bigwig]
             [bcbio.run.itx :as itx]))
 
+;; ## Utilities
+
+(defn rmap
+  "Reducer based parallel map, with flexible core usage and chunking.
+   http://www.thebusby.com/2012/07/tips-tricks-with-clojure-reducers.html
+   https://groups.google.com/d/msg/clojure/asaLNnM9v74/-t-2ZlCN5P4J
+   https://groups.google.com/d/msg/clojure/oWyDP1JGzwc/5oeYqEHHOTAJ"
+  [f coll cores chunk-size]
+  (alter-var-root #'r/pool (constantly (java.util.concurrent.ForkJoinPool. (int cores))))
+  (r/fold chunk-size r/cat r/append! (r/map f coll)))
+
 ;; ## Regions from gene names
 
 (defn- fetch-coding-coords
@@ -86,7 +97,9 @@
     (doseq [x sources]
       (.close x))))
 
-(defmulti get-coverage-retriever* class)
+(defmulti get-coverage-retriever*
+  (fn [f _]
+    (class f)))
 
 (defn- ext->ftype
   "Extract file type to process from input file extension"
@@ -101,27 +114,28 @@
 
 (defmethod get-coverage-retriever* java.lang.String
   ^{:doc "Get a retriever that calculates coverage per position, handling alternative file types."}
-  [in-file]
+  [in-file params]
   (let [ftype (ext->ftype in-file)
         source (get-source in-file ftype)]
     (CoverageRetriever. ftype source)))
 
 (defmethod get-coverage-retriever* clojure.lang.Seqable
   ^{:doc "Prepare a retriever calculating the average over multiple input files."}
-  [in-files]
+  [in-files params]
   (let [ftypes (set (map ext->ftype in-files))]
     (if (> (count ftypes) 1)
       (throw (Exception. "Cannot retrieve from multiple heterogeneous input sources."))
-      (PopCoverageRetriever. (first ftypes) (map #(get-source % (first ftypes)) in-files)))))
+      (PopCoverageRetriever. (first ftypes) (rmap #(get-source % (first ftypes)) in-files
+                                                  1 (get params :cores 1))))))
 
 (defn get-coverage-retriever
   "Retrieve coverage, handling multiple input files and different coverage types."
-  [file-info]
+  [file-info params]
   (let [test-file (if (and (not (instance? java.lang.String file-info))
                            (= 1 (count file-info)))
                     (first file-info)
                     file-info)]
-    (get-coverage-retriever* test-file)))
+    (get-coverage-retriever* test-file params)))
 
 (defn split-into-blocks
   "Split a sequence of positions into blocks of consecutive items within n bases."
@@ -147,15 +161,6 @@
        (map (juxt first last))
        (filter (fn [[s e]] (> (- e s) (get-in params [:block :min] 10.0))))))
 
-(defn- rmap
-  "Reducer based parallel map, with flexible core usage and chunking.
-   http://www.thebusby.com/2012/07/tips-tricks-with-clojure-reducers.html
-   https://groups.google.com/d/msg/clojure/oWyDP1JGzwc/5oeYqEHHOTAJ"
-  [f coll cores chunk-size]
-  (alter-var-root #'r/pool (constantly (java.util.concurrent.ForkJoinPool. (int cores))))
-  (r/fold chunk-size (r/monoid into vector) conj
-          (r/map f coll)))
-
 (def safe-retriever
   ^{:private true
     :doc "A local retriever used for coverage retrieval to enable parallel access."}
@@ -172,7 +177,7 @@
   [retriever contig start end params]
   (reset! safe-retriever retriever)
   (let [cores (get params :cores 1)
-        chunk-size (get params :chunk-size 5)
+        chunk-size (get params :chunk-size 1)
         cov (rmap #(i->cov % contig (get params :coverage 10.0))
                   (range start end) cores chunk-size)]
     (reset! safe-retriever nil)
@@ -204,7 +209,7 @@
     :organism - Organism Ensembl name"
   [coverage-input gene-file params]
   (let [gene-coord-file (get-coord-bed gene-file params)]
-    (with-open [retriever (get-coverage-retriever coverage-input)
+    (with-open [retriever (get-coverage-retriever coverage-input params)
                 rdr (io/reader gene-coord-file)]
       (doseq [coords (map second (group-by :name (bed/get-iterator rdr)))]
         (println (gene-problem-coverage retriever coords params))))))

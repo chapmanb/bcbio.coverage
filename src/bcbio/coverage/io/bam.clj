@@ -17,7 +17,8 @@
       index-file
       (do
         (SAMFileReader/setDefaultValidationStringency SAMFileReader$ValidationStringency/LENIENT)
-        (BuildBamIndex/createIndex (SAMFileReader. (io/file in-bam)) (io/file (first index-choices)))
+        (itx/with-tx-file [tx-index-file (first index-choices)]
+          (BuildBamIndex/createIndex (SAMFileReader. (io/file in-bam)) (io/file tx-index-file)))
         (first index-choices)))))
 
 (defn get-bam-source

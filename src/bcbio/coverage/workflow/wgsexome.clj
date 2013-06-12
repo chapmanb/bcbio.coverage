@@ -88,8 +88,8 @@
 (defn- compare-region
   "Compare coverage based metrics and variations in a set of gene exons."
   [wgs-config exome-config coords ref-file params]
-  (with-open [wgs-c-get (gene/get-coverage-retriever (map :coverage (:samples wgs-config)))
-              exome-c-get (gene/get-coverage-retriever (map :coverage (:samples exome-config)))]
+  (with-open [wgs-c-get (gene/get-coverage-retriever (map :coverage (:samples wgs-config)) params)
+              exome-c-get (gene/get-coverage-retriever (map :coverage (:samples exome-config)) params)]
     (let [wgs-vrns (high-freq-variant-coords wgs-config coords ref-file params)
           exome-vrns (high-freq-variant-coords exome-config coords ref-file params)]
       {:wgs
