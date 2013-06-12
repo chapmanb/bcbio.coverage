@@ -9,7 +9,7 @@
        :private true}
   main-map
   {:gene bcbio.coverage.gene/-main
-   :wgsexome wgsexome/compare-from-config})
+   :wgsexome wgsexome/-main})
 
 (defn -main [& args]
   (if-let [main-fn (get main-map (keyword (first args)))]

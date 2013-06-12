@@ -1,6 +1,7 @@
 (ns bcbio.coverage.gene
   "Identify gene regions with low and no coverage blocks."
-  (:require [clojure.java.io :as io]
+  (:require [clojure.core.reducers :as r]
+            [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :refer [cli]]
             [incanter.stats :as istat]
@@ -139,25 +140,45 @@
 
 (defn- identify-nocoverage-blocks
   "Extract blocks of nocoverage bases from raw positions"
-  [cov-by-pos params]
-  (->> (keys cov-by-pos)
+  [low-is params]
+  (->> low-is
        (split-into-blocks (get-in params [:block :distance] 100.0))
        (remove empty?)
        (map (juxt first last))
        (filter (fn [[s e]] (> (- e s) (get-in params [:block :min] 10.0))))))
 
+(defn- rmap
+  "Reducer based parallel map, with flexible core usage and chunking.
+   http://www.thebusby.com/2012/07/tips-tricks-with-clojure-reducers.html
+   https://groups.google.com/d/msg/clojure/oWyDP1JGzwc/5oeYqEHHOTAJ"
+  [f coll cores chunk-size]
+  (alter-var-root #'r/pool (constantly (java.util.concurrent.ForkJoinPool. (int cores))))
+  (r/fold chunk-size (r/monoid into vector) conj
+          (r/map f coll)))
+
+(def safe-retriever
+  ^{:private true
+    :doc "A local retriever used for coverage retrieval to enable parallel access."}
+  (atom nil))
+
+(defn- i->cov
+  "Provide coverage information for a position."
+  [i contig min-cov]
+  (let [n (get-coverage @safe-retriever contig i)]
+    {:i i :n n :low (< n min-cov)}))
+
 (defn region-problem-coverage
   "Calculate stats for problematic coverage in a chromosome region."
   [retriever contig start end params]
-  (let [cov (reduce (fn [coll i]
-                      (let [n (get-coverage retriever contig i)]
-                        (if (< n (:coverage params 10.0))
-                          (assoc-in coll [:low i] n)
-                          (assoc-in coll [:high i] n))))
-                    {:high {} :low {}} (range start end))]
-    {:count (count (:low cov))
-     :blocks (identify-nocoverage-blocks (:low cov) params)
-     :coverages (concat (vals (:high cov)) (vals (:low cov)))
+  (reset! safe-retriever retriever)
+  (let [cores (get params :cores 1)
+        chunk-size (get params :chunk-size 5)
+        cov (rmap #(i->cov % contig (get params :coverage 10.0))
+                  (range start end) cores chunk-size)]
+    (reset! safe-retriever nil)
+    {:count (count (filter :low cov))
+     :blocks (identify-nocoverage-blocks (->> cov (filter :low) (map :i)) params)
+     :coverages (map :n cov)
      :size (- end start)}))
 
 (defn gene-problem-coverage

@@ -3,6 +3,7 @@
   (:require [clojure.data.csv :as csv]
             [clojure.java.io :as io]
             [clojure.pprint :refer [pprint]]
+            [clojure.tools.cli :refer [cli]]
             [clj-yaml.core :as yaml]
             [incanter.charts :as icharts]
             [incanter.core :as icore]
@@ -166,11 +167,25 @@
 
 (defn compare-from-config
   "Perform comparison reading input information from YAML configuration file."
-  [config-file out-file]
-  (let [config (-> config-file slurp yaml/parse-string)
-        [wgs-config exome-config] (take 2 (:experiments config))
-        cmps (do-compare wgs-config exome-config (:regions config) (:ref-file config)
-                         (:params config))]
-    (write-to-csv cmps out-file)
-    (plot-top-differences cmps out-file (:params config)))
-  out-file)
+  ([config-file out-file cores]
+     (let [config (-> config-file slurp yaml/parse-string
+                      (assoc-in [:params :cores] cores))
+           [wgs-config exome-config] (take 2 (:experiments config))
+           cmps (do-compare wgs-config exome-config (:regions config) (:ref-file config)
+                            (:params config))]
+       (write-to-csv cmps out-file)
+       (plot-top-differences cmps out-file (:params config)))
+     out-file)
+  ([config-file out-file]
+     (compare-from-config config-file out-file 1)))
+
+(defn -main [& args]
+  (let [[options args banner]
+        (cli args
+             ["-c" "--cores" "Number of cores to use" :default 1
+              :parse-fn #(Integer. %)])]
+    (when (not= (count args) 2)
+      (println banner)
+      (println "Usage: wgsexome <config file> <output CSV file>")
+      (System/exit 1))
+    (compare-from-config (first args) (second args) (:cores options))))
