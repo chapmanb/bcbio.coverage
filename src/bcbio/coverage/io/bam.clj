@@ -4,16 +4,16 @@
            [net.sf.picard.sam BuildBamIndex])
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
-            [me.raynes.fs :as fs]))
-
-(defn file-exists? [f]
-  (and (fs/exists? f) (> (fs/size f) 0)))
+            [bcbio.run.itx :as itx]))
 
 (defn index-bam
   "Generate BAM index, skipping if already present."
   [in-bam]
   (let [index-choices [(str in-bam ".bai") (string/replace in-bam ".bam" ".bai")]]
-    (if-let [index-file (first (filter file-exists? index-choices))]
+    (if-let [index-file (->> index-choices
+                             (remove itx/needs-run?)
+                             (filter #(itx/up-to-date? % in-bam))
+                             first)]
       index-file
       (do
         (SAMFileReader/setDefaultValidationStringency SAMFileReader$ValidationStringency/LENIENT)
