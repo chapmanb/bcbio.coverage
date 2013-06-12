@@ -32,7 +32,7 @@
     (itx/remove-path name-exon-file)
     (gene/get-coord-bed gene-bed {}) => gene-bed
     ;; Test calls out to Ensembl, slow
-    ;; (gene/get-coord-bed name-file {:organism "human"}) => name-exon-file
+    ;;(gene/get-coord-bed name-file {:organism "human"}) => name-exon-file
     ))
 
 (facts "Manipulations for intervals and BED files"
@@ -53,5 +53,7 @@
     (map (juxt :chr :start) vcs) => [["22" 6920] ["22" 7226]]))
 
 (facts "Compare whole genome and exome coverage"
-  (let [wgs-config (str (io/file data-dir "wgsexome-compare.yaml"))]
-    (wgsexome/compare-from-config wgs-config)) => nil)
+  (let [wgs-config (str (io/file data-dir "wgsexome-compare.yaml"))
+        out-file (str (itx/file-root wgs-config) ".csv")]
+    (itx/remove-path out-file)
+    (wgsexome/compare-from-config wgs-config out-file) => out-file))

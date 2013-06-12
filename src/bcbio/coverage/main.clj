@@ -1,13 +1,15 @@
 (ns bcbio.coverage.main
   "Main entry point for command line programs."
   (:require [clojure.string :as string]
-            [bcbio.coverage.gene])
+            [bcbio.coverage.gene]
+            [bcbio.coverage.workflow.wgsexome :as wgsexome])
   (:gen-class))
 
 (def ^{:doc "Mapping of command line arguments to sub commands"
        :private true}
   main-map
-  {:gene bcbio.coverage.gene/-main})
+  {:gene bcbio.coverage.gene/-main
+   :wgsexome wgsexome/compare-from-config})
 
 (defn -main [& args]
   (if-let [main-fn (get main-map (keyword (first args)))]

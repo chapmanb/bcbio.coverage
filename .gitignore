@@ -13,3 +13,5 @@ pom.xml.asc
 .lein-env
 test/data/*.bai
 test/data/*.idx
+test/data/wgsexome-compare.csv
+test/data/wgsexome-compare.png
