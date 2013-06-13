@@ -20,8 +20,8 @@
    https://groups.google.com/d/msg/clojure/asaLNnM9v74/-t-2ZlCN5P4J
    https://groups.google.com/d/msg/clojure/oWyDP1JGzwc/5oeYqEHHOTAJ"
   [f coll cores chunk-size]
-  (alter-var-root #'r/pool (constantly (java.util.concurrent.ForkJoinPool. (int cores))))
-  (r/fold chunk-size r/cat r/append! (r/map f coll)))
+  (alter-var-root #'r/pool (constantly (future (java.util.concurrent.ForkJoinPool. (int cores)))))
+  (r/fold chunk-size r/cat r/append! (r/map f (vec coll))))
 
 ;; ## Regions from gene names
 
@@ -126,7 +126,7 @@
     (if (> (count ftypes) 1)
       (throw (Exception. "Cannot retrieve from multiple heterogeneous input sources."))
       (PopCoverageRetriever. (first ftypes) (rmap #(get-source % (first ftypes)) in-files
-                                                  1 (get params :cores 1))))))
+                                                  (get params :cores 1) 1)))))
 
 (defn get-coverage-retriever
   "Retrieve coverage, handling multiple input files and different coverage types."
@@ -176,6 +176,7 @@
   "Calculate stats for problematic coverage in a chromosome region."
   [retriever contig start end params]
   (reset! safe-retriever retriever)
+  (println (format "Coverage in %s %s %s" contig start end))
   (let [cores (get params :cores 1)
         chunk-size (get params :chunk-size 1)
         cov (rmap #(i->cov % contig (get params :coverage 10.0))

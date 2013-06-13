@@ -16,4 +16,6 @@
     (apply main-fn (rest args))
     (do
       (println (str "Unexpected command: '" (first args) "' "
-                    "Available commands: " (string/join ", " (map name (keys main-map))))))))
+                    "Available commands: " (string/join ", " (map name (keys main-map)))))))
+  (shutdown-agents)
+  (System/exit 0))
