@@ -122,30 +122,33 @@
        (map (juxt first last))
        (filter (fn [[s e]] (> (- e s) (get-in params [:block :min] 10.0))))))
 
-(defn region-problem-coverage
+
+(defn coverage-report-region
   "Calculate stats for problematic coverage in a chromosome region."
   [input-files coord ref-file params]
-  (let [cores (get params :cores 1)
-        chunk-size (get params :chunk-size 1)
-        cov (->> (get-coverage input-files coord ref-file params)
+  (let [cov (->> (get-coverage input-files coord ref-file params)
                  (map #(assoc % :low (< (:n %) (get params :coverage 10.0)))))]
     {:count (count (filter :low cov))
+     :coord coord
      :blocks (identify-nocoverage-blocks (->> cov (filter :low) (map :i)) params)
      :coverages (map :n cov)
      :size (- (:end coord) (:start coord))}))
 
-(defn gene-problem-coverage
-  "Calculate stats for problematic coverage across a set of gene regions."
+(defn coverage-report-bygene
+  "Calculate coverage reports for all passed regions, grouped by gene."
   [input-files coords ref-file params]
-  (let [regions (map #(region-problem-coverage input-files % ref-file params)
-                     coords)]
-    {:name (-> coords first :name)
-     :coords (map #(select-keys % [:chr :start :end]) coords)
-     :avg-reads (istat/mean (mapcat :coverages regions))
-     :blocks (mapcat :blocks regions)
-     :size (apply + (map :size regions))
-     :percent-nocoverage (* 100.0 (/ (apply + (map :count regions))
-                                     (apply + (map :size regions))))}))
+  (let [all-regions (rmap #(coverage-report-region input-files % ref-file params)
+                          coords (get params :cores 1) (get params :chunk-size 1))]
+    (for [[name regions] (group-by #(get-in % [:coord :name]) all-regions)]
+      {:name name
+       :coords (->> regions
+                    (map :coord)
+                    (map #(select-keys % [:chr :start :end])))
+       :avg-reads (istat/mean (mapcat :coverages regions))
+       :blocks (mapcat :blocks regions)
+       :size (apply + (map :size regions))
+       :percent-nocoverage (* 100.0 (/ (apply + (map :count regions))
+                                       (apply + (map :size regions))))})))
 
 (defn problem-coverage
   "Identify problematic coverage for all supplied gene regions.
@@ -158,8 +161,9 @@
   [coverage-input gene-file ref-file params]
   (let [gene-coord-file (get-coord-bed gene-file params)]
     (with-open [rdr (io/reader gene-coord-file)]
-      (doseq [coords (map second (group-by :name (bed/get-iterator rdr)))]
-        (println (gene-problem-coverage coverage-input coords ref-file params))))))
+      (doseq [report (coverage-report-bygene coverage-input (bed/get-iterator rdr)
+                                             ref-file params)]
+        (println report)))))
 
 (defn -main [& args]
   (let [[options args banner] (cli args)]

@@ -24,15 +24,16 @@
               (assoc coll kw (inc (get coll kw)))))
           {:uncovered 0 :covered 0} vrn-coords))
 
-(defn- coverage-report
-  "Provide summary of coverage for a set of coordinates.
+(defn- all-coverage-reports
+  "Provide summary of coverage for all coordinates, grouping by gene names.
    Calculates:
    - Summary metrics of coverage in gene.
-   - High frequency variant calls in comparison without coverage in current."
-  [in-files coords vrn-coords ref-file params]
-  (-> (gene/gene-problem-coverage in-files coords ref-file params)
-      (assoc :variant-compare (variant-coverage in-files vrn-coords ref-file params))
-      (dissoc :coords)))
+   - High frequency variant calls in comparison without coverage in current.
+  "
+  [config coords ref-file params]
+  (let [inputs (map :coverage (:samples config))]
+    (->> (gene/coverage-report-bygene inputs coords ref-file params)
+         (sort-by :name))))
 
 (defmulti sample-variants
   "Retrieve variants from different input types for a group of samples."
@@ -75,8 +76,6 @@
     {:total (count vcs)
      :unique (count (remove #(contains? vrn-coords (select-keys % [:chr :start])) vcs))}))
 
-; ## Framework
-
 (defn- high-freq-variant-coords
   "Retrieve coordinates of high frequency variants in the given exon regions."
   [config coords ref-file params]
@@ -86,33 +85,42 @@
        (map #(assoc % :end (inc (:start %))))
        set))
 
-(defn- compare-region
+(defn- add-gene-variant-reports
   "Compare coverage based metrics and variations in a set of gene exons."
-  [wgs-config exome-config coords ref-file params]
-  (let [wgs-inputs (map :coverage (:samples wgs-config))
+  [wgs-config exome-config wgs-coverage exome-coverage ref-file params]
+  (when (not= (:coords wgs-coverage) (:coords exome-coverage))
+    (throw (Exception. (str "Mismatched exome and WGS coordinates"
+                            (:coords wgs-coverage)) (:coords exome-coverage))))
+  (let [coords (:coords wgs-coverage)
+        wgs-inputs (map :coverage (:samples wgs-config))
         exome-inputs (map :coverage (:samples exome-config))
         wgs-vrns (high-freq-variant-coords wgs-config coords ref-file params)
         exome-vrns (high-freq-variant-coords exome-config coords ref-file params)]
     {:wgs
-     {:coverage (coverage-report wgs-inputs coords exome-vrns ref-file params)
+     {:coverage (assoc wgs-coverage :variant-compare (variant-coverage wgs-inputs exome-vrns ref-file params))
       :variant (variant-report wgs-config coords exome-vrns ref-file params)}
      :exome
-     {:coverage (coverage-report exome-inputs coords wgs-vrns ref-file params)
+     {:coverage (assoc exome-coverage :variant-compare (variant-coverage exome-inputs wgs-vrns ref-file params))
       :variant (variant-report exome-config coords wgs-vrns ref-file params)}}))
+
+; ## Framework
 
 (defn- do-compare
   "Compare a WGS and exome experiment in specific gene regions of interest."
   [wgs-config exome-config region-file ref-file params]
   (let [gene-coord-file (gene/get-coord-bed region-file params)]
     (with-open [rdr (io/reader gene-coord-file)]
-      (->> (bed/get-iterator rdr)
-           (group-by :name)
-           (map second)
-           (map #(compare-region wgs-config exome-config % ref-file params))))))
+      (let [coords (vec (bed/get-iterator rdr))
+            wgs-coverage (all-coverage-reports wgs-config coords ref-file params)
+            exome-coverage (all-coverage-reports exome-config coords ref-file params)]
+        (map (fn [w e] (add-gene-variant-reports wgs-config exome-config w e
+                                                 ref-file params))
+             wgs-coverage exome-coverage)))))
 
 (defn- cmp->csv
   "Convert coverage comparison information into flattened CSV output."
   [cmp]
+  (pprint cmp)
   (map #(get-in cmp %)
        [[:wgs :coverage :name]
         [:wgs :coverage :size]
