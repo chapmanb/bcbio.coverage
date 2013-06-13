@@ -47,81 +47,56 @@
 
 ;; ## Coverage retrieval
 
-(defmulti get-coverage*
-  "Retrieve coverage, dispatching on type of input file."
-  (fn [ftype & args] ftype))
-
-(defmethod get-coverage* :bw
-  ^{:doc "Retrieve coverage at a position from a BigWig file of by-position coverage"}
-  [_ in-file contig pos]
-  (let [source (bigwig/get-source in-file)
-        bw-item (first (iterator-seq
-                        (.getBigWigIterator source contig pos contig (inc pos) false)))]
-    (if bw-item
-      (.getWigValue bw-item)
-      0)))
-
-(defmethod get-coverage* :bam
-  ^{:doc "Retrieve position coverage directly from a BAM file"}
-  [_ in-file contig pos]
-  (with-open [source (bam/get-bam-source in-file)
-              iter (.queryOverlapping source contig (inc pos) (inc pos))]
-    (count (iterator-seq iter))))
-
-(defprotocol RetrieveCoverage
-  (get-coverage [this contig pos]))
-
-(defrecord CoverageRetriever [ftype fname]
-  RetrieveCoverage
-  (get-coverage [_ contig pos]
-    (get-coverage* ftype fname contig pos))
-  java.io.Closeable
-  (close [_]))
-
-(defrecord PopCoverageRetriever [ftype fnames]
-  RetrieveCoverage
-  (get-coverage [_ contig pos]
-    (istat/median (map #(get-coverage* ftype % contig pos) fnames)))
-  java.io.Closeable
-  (close [_]))
-
-(defmulti get-coverage-retriever*
-  (fn [f _]
-    (class f)))
-
 (defn- ext->ftype
   "Extract file type to process from input file extension"
   [in-file]
   (-> in-file fs/extension string/lower-case (subs 1) keyword))
 
-(defmethod get-coverage-retriever* java.lang.String
-  ^{:doc "Get a retriever that calculates coverage per position, handling alternative file types."}
-  [in-file params]
-  (let [ftype (ext->ftype in-file)]
-    (CoverageRetriever. ftype in-file)))
+(defmulti get-coverage*
+  (fn [ftype & args]
+    ftype))
 
-(defmethod get-coverage-retriever* clojure.lang.Seqable
-  ^{:doc "Prepare a retriever calculating the average over multiple input files."}
-  [in-files params]
-  (let [ftypes (set (map ext->ftype in-files))]
+(defn- counts->cov
+  [coord counts]
+  (map (fn [i] {:i i :n (get counts i 0)}) (range (:start coord) (:end coord))))
+
+(defmethod get-coverage* :bam
+  ^{:doc "Retrieve average coverage information over a genomic region using GATK pileups."}
+  [_ in-files coord ref-file params]
+  ;; Perform initial setup of BAM files, including indexing
+  (doseq [source (rmap bam/get-bam-source in-files
+                       (get params :cores 1) 1)]
+    (.close source))
+  (with-open [iter (bam/prep-bam-region-iter in-files ref-file coord)]
+    (let [bam-counts (reduce (fn [coll x]
+                               (assoc coll (dec (.getPosition x))
+                                      (/ (.size x) (count in-files))))
+                             {} (bam/get-align-contexts iter))]
+      (counts->cov coord bam-counts))))
+
+(defmethod get-coverage* :bw
+  ^{:doc "Retrieve coverage information from input BigWig file"}
+  [_ in-files coord _ _]
+  (when (> (count in-files) 1)
+    (throw (Exception. "Do not currently handle multiple BigWig inputs.")))
+  (with-open [source (bigwig/get-source (first in-files))]
+    (let [bw-counts (reduce (fn [coll x]
+                              (if-let [v (.getWigValue x)]
+                                (assoc coll (.getStartBase x) v)
+                                coll))
+                            {} (iterator-seq (.getBigWigIterator source (:chr coord) (:start coord)
+                                                                 (:chr coord) (inc (:end coord)) false)))]
+      (counts->cov coord bw-counts))))
+
+(defn get-coverage
+  "Retrieve coverage in a region, handling multiple input files
+  and heterogeneous file types."
+  [input-info coord ref-file params]
+  (let [in-files (if (instance? java.lang.String input-info) [input-info] input-info)
+        ftypes (set (map ext->ftype in-files))]
     (if (> (count ftypes) 1)
       (throw (Exception. "Cannot retrieve from multiple heterogeneous input sources."))
-      (do
-        ;; Perform initial setup of BAM files, including indexing
-        (when (= :bam (first ftypes))
-          (doseq [source (rmap bam/get-bam-source in-files
-                               (get params :cores 1) 1)]
-            (.close source)))
-        (PopCoverageRetriever. (first ftypes) in-files)))))
-
-(defn get-coverage-retriever
-  "Retrieve coverage, handling multiple input files and different coverage types."
-  [file-info params]
-  (let [test-file (if (and (not (instance? java.lang.String file-info))
-                           (= 1 (count file-info)))
-                    (first file-info)
-                    file-info)]
-    (get-coverage-retriever* test-file params)))
+      (get-coverage* (first ftypes) in-files coord ref-file params))))
 
 (defn split-into-blocks
   "Split a sequence of positions into blocks of consecutive items within n bases."
@@ -147,36 +122,22 @@
        (map (juxt first last))
        (filter (fn [[s e]] (> (- e s) (get-in params [:block :min] 10.0))))))
 
-(def safe-retriever
-  ^{:private true
-    :doc "A local retriever used for coverage retrieval to enable parallel access."}
-  (atom nil))
-
-(defn- i->cov
-  "Provide coverage information for a position."
-  [i contig min-cov]
-  (let [n (get-coverage @safe-retriever contig i)]
-    {:i i :n n :low (< n min-cov)}))
-
 (defn region-problem-coverage
   "Calculate stats for problematic coverage in a chromosome region."
-  [retriever contig start end params]
-  (reset! safe-retriever retriever)
-  (println (format "Coverage in %s %s %s" contig start end))
+  [input-files coord ref-file params]
   (let [cores (get params :cores 1)
         chunk-size (get params :chunk-size 1)
-        cov (rmap #(i->cov % contig (get params :coverage 10.0))
-                  (range start end) cores chunk-size)]
-    (reset! safe-retriever nil)
+        cov (->> (get-coverage input-files coord ref-file params)
+                 (map #(assoc % :low (< (:n %) (get params :coverage 10.0)))))]
     {:count (count (filter :low cov))
      :blocks (identify-nocoverage-blocks (->> cov (filter :low) (map :i)) params)
      :coverages (map :n cov)
-     :size (- end start)}))
+     :size (- (:end coord) (:start coord))}))
 
 (defn gene-problem-coverage
   "Calculate stats for problematic coverage across a set of gene regions."
-  [retriever coords params]
-  (let [regions (map #(region-problem-coverage retriever (:chr %) (:start %) (:end %) params)
+  [input-files coords ref-file params]
+  (let [regions (map #(region-problem-coverage input-files % ref-file params)
                      coords)]
     {:name (-> coords first :name)
      :coords (map #(select-keys % [:chr :start :end]) coords)
@@ -194,17 +155,16 @@
       :min - Minimum size of a block to report
       :distance - Allowed distance between nocoverage bases to be considered in a block
     :organism - Organism Ensembl name"
-  [coverage-input gene-file params]
+  [coverage-input gene-file ref-file params]
   (let [gene-coord-file (get-coord-bed gene-file params)]
-    (with-open [retriever (get-coverage-retriever coverage-input params)
-                rdr (io/reader gene-coord-file)]
+    (with-open [rdr (io/reader gene-coord-file)]
       (doseq [coords (map second (group-by :name (bed/get-iterator rdr)))]
-        (println (gene-problem-coverage retriever coords params))))))
+        (println (gene-problem-coverage coverage-input coords ref-file params))))))
 
 (defn -main [& args]
   (let [[options args banner] (cli args)]
-    (when (not= (count args) 2)
-      (println "Usage: gene <BAM or BigWig coverage file> <BED file of gene regions>")
+    (when (not= (count args) 3)
+      (println "Usage: gene <BAM or BigWig coverage file> <BED file of gene regions>" "<Reference FASTA file>")
       (System/exit 1))
     (apply problem-coverage (concat args [{:coverage 10
                                            :block {:min 50 :distance 5}}]))))

@@ -12,6 +12,7 @@ pom.xml.asc
 .lein-repl-history
 .lein-env
 test/data/*.bai
+test/data/*.dict
 test/data/*.idx
 test/data/wgsexome-compare.csv
 test/data/wgsexome-compare.png

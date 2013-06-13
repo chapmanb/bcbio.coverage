@@ -3,6 +3,7 @@
   (:require [clojure.java.io :as io]
             [midje.sweet :refer :all]
             [bcbio.coverage.gene :as gene]
+            [bcbio.coverage.io.bam :as bam]
             [bcbio.coverage.io.bed :as bed]
             [bcbio.coverage.source.esp :as esp]
             [bcbio.coverage.workflow.wgsexome :as wgsexome]
@@ -12,6 +13,7 @@
  (around :facts
          (let [data-dir (str (io/file "test" "data"))
                bam-file (str (io/file data-dir "aligned-reads.bam"))
+               ref-file (str (io/file data-dir "GRCh37.fa"))
                bw-file (str (io/file data-dir "esp-coverage.bw"))
                gene-bed (str (io/file data-dir "gene-regions.bed"))]
            ?form)))
@@ -23,8 +25,9 @@
     (gene/split-into-blocks 3 bases) => [[1 3 4 5 8 10 11 14]]
     (gene/split-into-blocks 2 bases) => [[1 3 4 5] [8 10 11] [14]]
     (gene/split-into-blocks 1 bases) => [[1] [3 4 5] [8] [10 11] [14]]
-    (gene/problem-coverage bam-file gene-bed params) => nil
-    (gene/problem-coverage bw-file gene-bed params) => nil))
+    (gene/problem-coverage bam-file gene-bed ref-file params) => nil
+    (gene/problem-coverage bw-file gene-bed ref-file params) => nil
+    ))
 
 (facts "Convert gene names into coordinates"
   (let [name-file (str (io/file data-dir "genenames.txt"))
@@ -47,7 +50,6 @@
 
 (facts "Extract variants from ESP by region and allele frequency"
   (let [esp-vcf-file (str (io/file data-dir "esp-snps_indels.vcf"))
-        ref-file (str (io/file data-dir "GRCh37.fa"))
         vcs (esp/variants-in-region esp-vcf-file ref-file
                                     {:chr "22" :start 6900 :end 7300} 1.0)]
     (map (juxt :chr :start) vcs) => [["22" 6920] ["22" 7226]]))
@@ -57,3 +59,7 @@
         out-file (str (itx/file-root wgs-config) ".csv")]
     (itx/remove-path out-file)
     (wgsexome/compare-from-config wgs-config out-file) => out-file))
+
+(facts "GATK based iterator over piled up read regions."
+  (with-open [iter (bam/prep-bam-region-iter [bam-file] ref-file {:chr "MT" :start 250 :end 300})]
+    (-> (bam/get-align-contexts iter) first .size) => 5))

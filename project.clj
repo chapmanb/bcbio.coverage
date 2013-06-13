@@ -10,6 +10,7 @@
                  [org.clojars.chapmanb/sam "1.90"]
                  [org.clojars.chapmanb/tribble "1.90"]
                  [org.clojars.chapmanb/variant "1.90"]
+                 [org.clojars.chapmanb/gatk-lite "2.5.2"]
                  [org.bioclojure/bio.ensembl "0.2.0"]
                  [clj-yaml "0.4.0"]
                  [incanter/incanter-core "1.5.0"]
