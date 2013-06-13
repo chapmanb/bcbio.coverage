@@ -1,7 +1,6 @@
 (ns bcbio.coverage.gene
   "Identify gene regions with low and no coverage blocks."
-  (:require [clojure.core.reducers :as r]
-            [clojure.java.io :as io]
+  (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :refer [cli]]
             [incanter.stats :as istat]
@@ -10,18 +9,8 @@
             [bcbio.coverage.io.bam :as bam]
             [bcbio.coverage.io.bed :as bed]
             [bcbio.coverage.io.bigwig :as bigwig]
-            [bcbio.run.itx :as itx]))
-
-;; ## Utilities
-
-(defn rmap
-  "Reducer based parallel map, with flexible core usage and chunking.
-   http://www.thebusby.com/2012/07/tips-tricks-with-clojure-reducers.html
-   https://groups.google.com/d/msg/clojure/asaLNnM9v74/-t-2ZlCN5P4J
-   https://groups.google.com/d/msg/clojure/oWyDP1JGzwc/5oeYqEHHOTAJ"
-  [f coll cores chunk-size]
-  (alter-var-root #'r/pool (constantly (future (java.util.concurrent.ForkJoinPool. (int cores)))))
-  (r/fold chunk-size r/cat r/append! (r/map f (vec coll))))
+            [bcbio.run.itx :as itx]
+            [bcbio.run.parallel :refer [rmap]]))
 
 ;; ## Regions from gene names
 
@@ -64,8 +53,9 @@
 
 (defmethod get-coverage* :bw
   ^{:doc "Retrieve coverage at a position from a BigWig file of by-position coverage"}
-  [_ source contig pos]
-  (let [bw-item (first (iterator-seq
+  [_ in-file contig pos]
+  (let [source (bigwig/get-source in-file)
+        bw-item (first (iterator-seq
                         (.getBigWigIterator source contig pos contig (inc pos) false)))]
     (if bw-item
       (.getWigValue bw-item)
@@ -73,29 +63,27 @@
 
 (defmethod get-coverage* :bam
   ^{:doc "Retrieve position coverage directly from a BAM file"}
-  [_ source contig pos]
-  (with-open [iter (.queryOverlapping source contig (inc pos) (inc pos))]
+  [_ in-file contig pos]
+  (with-open [source (bam/get-bam-source in-file)
+              iter (.queryOverlapping source contig (inc pos) (inc pos))]
     (count (iterator-seq iter))))
 
 (defprotocol RetrieveCoverage
   (get-coverage [this contig pos]))
 
-(defrecord CoverageRetriever [ftype source]
+(defrecord CoverageRetriever [ftype fname]
   RetrieveCoverage
   (get-coverage [_ contig pos]
-    (get-coverage* ftype source contig pos))
+    (get-coverage* ftype fname contig pos))
   java.io.Closeable
-  (close [_]
-    (.close source)))
+  (close [_]))
 
-(defrecord PopCoverageRetriever [ftype sources]
+(defrecord PopCoverageRetriever [ftype fnames]
   RetrieveCoverage
   (get-coverage [_ contig pos]
-    (istat/median (map #(get-coverage* ftype % contig pos) sources)))
+    (istat/median (map #(get-coverage* ftype % contig pos) fnames)))
   java.io.Closeable
-  (close [_]
-    (doseq [x sources]
-      (.close x))))
+  (close [_]))
 
 (defmulti get-coverage-retriever*
   (fn [f _]
@@ -106,18 +94,11 @@
   [in-file]
   (-> in-file fs/extension string/lower-case (subs 1) keyword))
 
-(defn- get-source
-  [in-file ftype]
-  (case ftype
-    :bam (bam/get-bam-source in-file)
-    :bw (bigwig/get-source in-file)))
-
 (defmethod get-coverage-retriever* java.lang.String
   ^{:doc "Get a retriever that calculates coverage per position, handling alternative file types."}
   [in-file params]
-  (let [ftype (ext->ftype in-file)
-        source (get-source in-file ftype)]
-    (CoverageRetriever. ftype source)))
+  (let [ftype (ext->ftype in-file)]
+    (CoverageRetriever. ftype in-file)))
 
 (defmethod get-coverage-retriever* clojure.lang.Seqable
   ^{:doc "Prepare a retriever calculating the average over multiple input files."}
@@ -125,8 +106,13 @@
   (let [ftypes (set (map ext->ftype in-files))]
     (if (> (count ftypes) 1)
       (throw (Exception. "Cannot retrieve from multiple heterogeneous input sources."))
-      (PopCoverageRetriever. (first ftypes) (rmap #(get-source % (first ftypes)) in-files
-                                                  (get params :cores 1) 1)))))
+      (do
+        ;; Perform initial setup of BAM files, including indexing
+        (when (= :bam (first ftypes))
+          (doseq [source (rmap bam/get-bam-source in-files
+                               (get params :cores 1) 1)]
+            (.close source)))
+        (PopCoverageRetriever. (first ftypes) in-files)))))
 
 (defn get-coverage-retriever
   "Retrieve coverage, handling multiple input files and different coverage types."
