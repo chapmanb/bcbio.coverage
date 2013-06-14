@@ -5,7 +5,7 @@
            [org.broadinstitute.sting.commandline Tags]
            [ org.broadinstitute.sting.gatk.arguments ValidationExclusion]
            [org.broadinstitute.sting.gatk.datasources.reads
-            LocusShard SAMDataSource SAMReaderID]
+            LocusShardBalancer SAMDataSource SAMReaderID]
            [org.broadinstitute.sting.gatk.datasources.providers
             CoveredLocusView LocusShardDataProvider]
            [org.broadinstitute.sting.gatk.downsampling
@@ -15,7 +15,7 @@
             FailsVendorQualityCheckFilter NotPrimaryAlignmentFilter
             MalformedReadFilter UnmappedReadFilter]
            [org.broadinstitute.sting.gatk.resourcemanagement ThreadAllocation]
-           [org.broadinstitute.sting.utils GenomeLocParser])
+           [org.broadinstitute.sting.utils GenomeLocParser GenomeLocSortedSet])
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [bcbio.align.gref :as gref]
@@ -56,12 +56,10 @@
    :not-primary (NotPrimaryAlignmentFilter.)
    :unmapped (UnmappedReadFilter.)})
 
-(defn- get-gatk-bam-sources
+(defn- get-gatk-bam-source
   "Create required source references for GATK mapping to BAM files."
   [bam-files loc-parser filters downsample]
   (let [file-ids (map #(SAMReaderID. (io/file %) (Tags.)) bam-files)
-        file-spans (zipmap file-ids (map #(-> % io/file SAMFileReader. .getFilePointerSpanningReads)
-                                         bam-files))
         gatk-filters (map #(get gatk-filters %) filters)
         data-source (SAMDataSource. file-ids (ThreadAllocation.) nil loc-parser
                                     false SAMFileReader$ValidationStringency/LENIENT
@@ -69,36 +67,49 @@
                                     (when downsample (DownsamplingMethod. DownsampleType/BY_SAMPLE
                                                                           (int downsample) nil))
                                     (ValidationExclusion.) gatk-filters false)]
-    [data-source file-spans]))
+    data-source))
+
+(defn- get-gatk-shards
+  "Retrieve an iterator over GATK shard region of the genomes for specified locations."
+  [data-source locs loc-parser]
+  (-> data-source
+      (.createShardIteratorOverIntervals (GenomeLocSortedSet. loc-parser locs)
+                                         (LocusShardBalancer.))
+      .iterator
+      iterator-seq))
+
+(defn- get-gatk-views
+  "Retrieve GATK LocusView objects for a given shard region of the genome."
+  [shard data-source loc-parser sample-names]
+  (let [windows (iterator-seq (WindowMaker. shard loc-parser (.seek data-source shard)
+                                            (.getGenomeLocs shard) sample-names))]
+    (map #(CoveredLocusView.
+           (LocusShardDataProvider. shard (.getSourceInfo %) loc-parser
+                                    (.getLocus %) % nil nil))
+         windows)))
 
 (defprotocol GATKIteration
   (get-align-contexts [this]))
 
-(defrecord GATKLocationIterator [view shard window-maker shard-dp]
+(defrecord GATKLocationIterator [views]
   GATKIteration
   (get-align-contexts [_]
-    (iterator-seq view))
+    (mapcat #(iterator-seq %) views))
   java.io.Closeable
   (close [_]
-    (.close shard)
-    (.close window-maker)
-    (.close shard-dp)
-    (.close view)))
+    (doseq [view views]
+      (.close view))))
 
 (defn prep-bam-region-iter
-  "Create an iterator returning GATK AlignmentContexts over the provided locus coordinates.
+  "create an iterator returning GATK AlignmentContexts over the provided locus coordinates.
    Navigates the depths of GATK classes to provide a simple way to get pileups at
    each position in a set of BAM files."
-  [bam-files ref-file coord & {:keys [filters downsample]
+  [bam-files ref-file coords & {:keys [filters downsample]
                                :or {filters [:duplicate :vendor-quality :not-primary :unmapped]}}]
   (let [sample-names (mapcat get-sample-names bam-files)
         loc-parser (GenomeLocParser. (gref/get-seq-dict ref-file))
-        loc (.createGenomeLoc loc-parser (:chr coord) (:start coord) (:end coord))
-        [data-source file-spans] (get-gatk-bam-sources bam-files loc-parser filters downsample)
-        shard (LocusShard. loc-parser data-source [loc] file-spans)
-        window-maker (WindowMaker. shard loc-parser (.seek data-source shard) [loc] sample-names)
-        window (.next window-maker)
-        shard-dp (LocusShardDataProvider. shard (.getSourceInfo window) loc-parser (.getLocus window)
-                                          window nil nil)
-        view (CoveredLocusView. shard-dp)]
-    (GATKLocationIterator. view shard window-maker shard-dp)))
+        locs (map #(.createGenomeLoc loc-parser (:chr %) (:start %) (:end %)) coords)
+        data-source (get-gatk-bam-source bam-files loc-parser filters downsample)
+        shards (get-gatk-shards data-source locs loc-parser)
+        views (mapcat #(get-gatk-views % data-source loc-parser sample-names) shards)]
+    (GATKLocationIterator. views)))

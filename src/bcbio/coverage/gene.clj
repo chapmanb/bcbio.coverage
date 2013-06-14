@@ -67,7 +67,7 @@
   (doseq [source (rmap bam/get-bam-source in-files
                        (get params :cores 1) 1)]
     (.close source))
-  (with-open [iter (bam/prep-bam-region-iter in-files ref-file coord
+  (with-open [iter (bam/prep-bam-region-iter in-files ref-file [coord]
                                              :downsample (get params :downsample 500))]
     (let [bam-counts (reduce (fn [coll x]
                                ;(.downsampleToCoverage x (get params :downsample 500))

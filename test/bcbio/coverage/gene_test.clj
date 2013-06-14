@@ -61,5 +61,5 @@
     (wgsexome/compare-from-config wgs-config out-file) => out-file))
 
 (facts "GATK based iterator over piled up read regions."
-  (with-open [iter (bam/prep-bam-region-iter [bam-file] ref-file {:chr "MT" :start 250 :end 300})]
+  (with-open [iter (bam/prep-bam-region-iter [bam-file] ref-file [{:chr "MT" :start 250 :end 300}])]
     (-> (bam/get-align-contexts iter) first .size) => 5))
