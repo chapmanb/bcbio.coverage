@@ -20,14 +20,14 @@
 
 (facts "Identify gene regions with minimal sequencing coverage"
   (let [params {:coverage 10
+                :downsample 50
                 :block {:min 20 :distance 5}}
         bases [1 3 4 5 8 10 11 14]]
     (gene/split-into-blocks 3 bases) => [[1 3 4 5 8 10 11 14]]
     (gene/split-into-blocks 2 bases) => [[1 3 4 5] [8 10 11] [14]]
     (gene/split-into-blocks 1 bases) => [[1] [3 4 5] [8] [10 11] [14]]
     (gene/problem-coverage bam-file gene-bed ref-file params) => nil
-    (gene/problem-coverage bw-file gene-bed ref-file params) => nil
-    ))
+    (gene/problem-coverage bw-file gene-bed ref-file params) => nil))
 
 (facts "Convert gene names into coordinates"
   (let [name-file (str (io/file data-dir "genenames.txt"))

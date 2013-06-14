@@ -120,7 +120,6 @@
 (defn- cmp->csv
   "Convert coverage comparison information into flattened CSV output."
   [cmp]
-  (pprint cmp)
   (map #(get-in cmp %)
        [[:wgs :coverage :name]
         [:wgs :coverage :size]

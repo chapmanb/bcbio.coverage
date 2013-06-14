@@ -8,8 +8,11 @@
    https://groups.google.com/d/msg/clojure/asaLNnM9v74/-t-2ZlCN5P4J
    https://groups.google.com/d/msg/clojure/oWyDP1JGzwc/5oeYqEHHOTAJ"
   ([f coll cores chunk-size]
-     (alter-var-root #'r/pool (constantly (future (java.util.concurrent.ForkJoinPool. (int cores)))))
-     (r/fold chunk-size r/cat r/append! (r/map f (vec coll))))
+     (if (= 1 cores)
+       (map f coll)
+       (do
+         (alter-var-root #'r/pool (constantly (future (java.util.concurrent.ForkJoinPool. (int cores)))))
+         (r/fold chunk-size r/cat r/append! (r/map f (vec coll))))))
   ([f coll cores]
      (rmap f coll cores 1))
   ([f coll]
