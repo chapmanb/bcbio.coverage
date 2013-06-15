@@ -15,17 +15,25 @@
 ;; ## Regions from gene names
 
 (defn- transcript->translated-coords
-  "Retrieve chromosomal coordinates of translated protein coding sequence in a transcript."
+  "Retrieve chromosomal coordinates of translated protein coding sequence in a transcript.
+   Works around issue with Ensembl/jEnsembl where translated coordinates
+   map into introns, creation large apparent exons that include introns."
   [t]
   (let [chr (-> t .getChromosomeMapping .getTarget .getChromosomeName)
         strand (-> t .getChromosomeMapping .getTargetCoordinates .getStrandInt)
         trl (.getCanonicalTranslation t)]
-    (map (fn [m]
-           (let [c1 (->> m .getSourceCoordinates .getStart (.getChromosomePositionFromBASE trl))
-                 c2 (->> m .getSourceCoordinates .getEnd (.getChromosomePositionFromBASE trl))
-                 [s e] (if (neg? strand) [c2 c1] [c1 c2])]
-             {:start s :end e :chr chr :strand strand}))
-         (.getTranslationMappings trl))))
+    (remove nil?
+            (map (fn [m]
+                   (let [raws (-> m .getSourceCoordinates .getStart)
+                         rawe (-> m .getSourceCoordinates .getEnd)
+                         c1 (.getChromosomePositionFromBASE trl raws)
+                         c2 (.getChromosomePositionFromBASE trl rawe)
+                         [s e] (if (neg? strand) [c2 c1] [c1 c2])]
+                     ; Sanity check our remapping matches expected
+                     ; size, remove regions that do not
+                     (when (= (- e s) (Math/abs (- raws rawe)))
+                       {:start s :end e :chr chr :strand strand})))
+                 (.getTranslationMappings trl)))))
 
 (defn- gene-name-matches
   "Annotate gene match with information on all possible names for a gene.
