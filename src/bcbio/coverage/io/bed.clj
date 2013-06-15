@@ -44,8 +44,8 @@
   [intervals]
   (->> intervals
        (group-by :chr)
-       (map #(sort-by (juxt :start :end) %))
        (map second)
+       (map #(sort-by (juxt :start :end) %))
        (mapcat merge-intervals-chr)))
 
 ;; ## Tribble parsing

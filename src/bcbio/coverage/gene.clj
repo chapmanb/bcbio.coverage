@@ -14,13 +14,29 @@
 
 ;; ## Regions from gene names
 
+(defn- transcript->translated-coords
+  "Retrieve chromosomal coordinates of translated protein coding sequence in a transcript."
+  [t]
+  (let [chr (-> t .getChromosomeMapping .getTarget .getChromosomeName)
+        strand (-> t .getChromosomeMapping .getTargetCoordinates .getStrandInt)
+        trl (.getCanonicalTranslation t)]
+    (map (fn [m]
+           (let [c1 (->> m .getSourceCoordinates .getStart (.getChromosomePositionFromBASE trl))
+                 c2 (->> m .getSourceCoordinates .getEnd (.getChromosomePositionFromBASE trl))
+                 [s e] (if (neg? strand) [c2 c1] [c1 c2])]
+             {:start s :end e :chr chr :strand strand}))
+         (.getTranslationMappings trl))))
+
 (defn- fetch-coding-coords
   "Retrieve a flattened set of coordinates for coding regions attached to a gene."
   [gene-name params]
-  (if-let [gene (first (ens/gene-name->genes (get params :species "human") gene-name))]
+  (if-let [gene (->> (ens/gene-name->genes (get params :species "human") gene-name)
+                     (filter #(= gene-name (.getDisplayName %)))
+                     first)]
     (->> gene
          ens/gene-transcripts
-         (mapcat ens/transcript->exon-coords)
+         (filter #(= "protein_coding" (.getBiotype %)))
+         (mapcat transcript->translated-coords)
          bed/merge-intervals)
     (throw (Exception. (format "Did not find Gene information for %s in Ensembl" gene-name)))))
 
@@ -132,7 +148,7 @@
     {:count (count (filter :low cov))
      :coord coord
      :blocks (identify-nocoverage-blocks (->> cov (filter :low) (map :i)) params)
-     :coverages (map :n (filter :high cov))
+     :coverages (map :n (filter #(not (:low %)) cov))
      :size (- (:end coord) (:start coord))}))
 
 (defn coverage-report-bygene

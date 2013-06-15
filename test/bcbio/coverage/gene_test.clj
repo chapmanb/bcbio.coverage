@@ -35,14 +35,14 @@
     (itx/remove-path name-exon-file)
     (gene/get-coord-bed gene-bed {}) => gene-bed
     ;; Test calls out to Ensembl, slow
-    ;;(gene/get-coord-bed name-file {:organism "human"}) => name-exon-file
+    ;; (gene/get-coord-bed name-file {:organism "human"}) => name-exon-file
     ))
 
 (facts "Manipulations for intervals and BED files"
   (bed/merge-intervals []) => []
   (bed/merge-intervals [{:chr "A" :start 1 :end 3}
-                        {:chr "A" :start 2 :end 5}
                         {:chr "A" :start 7 :end 9}
+                        {:chr "A" :start 2 :end 5}
                         {:chr "B" :start 1 :end 3}]) =>
                         [{:chr "A" :start 1 :end 5}
                          {:chr "A" :start 7 :end 9}
