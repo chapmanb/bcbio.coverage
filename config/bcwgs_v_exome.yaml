@@ -4,7 +4,6 @@ params:
   species: human
   maf-thresh: 20.5672
   coverage: 10
-  downsample: 1000
   block:
     min: 100
     distance: 10

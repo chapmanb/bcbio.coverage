@@ -21,6 +21,8 @@
             [bcbio.align.gref :as gref]
             [bcbio.run.itx :as itx]))
 
+;; ## Picard BAM access
+
 (defn index-bam
   "Generate BAM index, skipping if already present."
   [in-bam]
@@ -41,6 +43,8 @@
   [bam-file]
   (let [index-file (index-bam bam-file)]
     (SAMFileReader. (io/file bam-file) (io/file index-file))))
+
+;; ## GATK BAM access: pileups
 
 (defn get-sample-names
   [bam-file]
@@ -81,11 +85,15 @@
 (defn- get-gatk-views
   "Retrieve GATK LocusView objects for a given shard region of the genome."
   [shard data-source loc-parser sample-names]
-  (let [windows (iterator-seq (WindowMaker. shard loc-parser (.seek data-source shard)
-                                            (.getGenomeLocs shard) sample-names))]
-    (map #(CoveredLocusView.
-           (LocusShardDataProvider. shard (.getSourceInfo %) loc-parser
-                                    (.getLocus %) % nil nil))
+  (let [wm (WindowMaker. shard loc-parser (.seek data-source shard)
+                         (.getGenomeLocs shard) sample-names)
+        windows (iterator-seq wm)]
+    (map (fn [w]
+           (let [dp (LocusShardDataProvider. shard (.getSourceInfo w) loc-parser
+                                             (.getLocus w) w nil nil)]
+             {:view  (CoveredLocusView. dp)
+              :dp dp
+              :wm wm}))
          windows)))
 
 (defprotocol GATKIteration
@@ -94,11 +102,15 @@
 (defrecord GATKLocationIterator [views]
   GATKIteration
   (get-align-contexts [_]
-    (mapcat #(iterator-seq %) views))
+    (mapcat #(iterator-seq (:view %)) views))
   java.io.Closeable
   (close [_]
-    (doseq [view views]
-      (.close view))))
+    (doseq [view (map :view views)]
+      (.close view))
+    (doseq [dp (map :dp views)]
+      (.close dp))
+    (doseq [wm (map :wm views)]
+      (.close wm))))
 
 (defn prep-bam-region-iter
   "create an iterator returning GATK AlignmentContexts over the provided locus coordinates.
