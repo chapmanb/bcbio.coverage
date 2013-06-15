@@ -27,11 +27,27 @@
              {:start s :end e :chr chr :strand strand}))
          (.getTranslationMappings trl))))
 
+(defn- gene-name-matches
+  "Annotate gene match with information on all possible names for a gene.
+   Tries to catch synonyms while preferring the primary name for multiple matches."
+  [g name-orig]
+  (let [name (string/upper-case name-orig)
+        display (string/upper-case (.getDisplayName g))
+        aliases (set (map string/upper-case (.getAllSynonyms g)))]
+    {:g g
+     :count (cond
+             (= name display) 2
+             (contains? aliases name) 1
+             :else 0)}))
+
 (defn- fetch-coding-coords
   "Retrieve a flattened set of coordinates for coding regions attached to a gene."
   [gene-name params]
   (if-let [gene (->> (ens/gene-name->genes (get params :species "human") gene-name)
-                     (filter #(= gene-name (.getDisplayName %)))
+                     (map #(gene-name-matches % gene-name))
+                     (filter #(pos? (:count %)))
+                     (sort-by :count >)
+                     (map :g)
                      first)]
     (->> gene
          ens/gene-transcripts
@@ -45,13 +61,14 @@
   [gene-file params]
   (let [bed-file (str (itx/file-root gene-file) "-exons.bed")]
     (when (itx/needs-run? bed-file)
-      (with-open [rdr (io/reader gene-file)
-                  wtr (io/writer bed-file)]
-        (ens/with-registry (ens/registry :ensembldb)
-          (doseq [gene-name (map #(-> % (string/split #"\s+") first string/trimr) (line-seq rdr))]
-            (doseq [coord (fetch-coding-coords gene-name params)]
-              (.write wtr (format "%s\t%s\t%s\t%s\n"
-                                  (:chr coord) (dec (:start coord)) (:end coord) gene-name)))))))
+      (itx/with-tx-file [tx-bed-file bed-file]
+        (with-open [rdr (io/reader gene-file)
+                    wtr (io/writer tx-bed-file)]
+          (ens/with-registry (ens/registry :ensembldb)
+            (doseq [gene-name (map #(-> % (string/split #"\s+") first string/trimr) (line-seq rdr))]
+              (doseq [coord (fetch-coding-coords gene-name params)]
+                (.write wtr (format "%s\t%s\t%s\t%s\n"
+                                    (:chr coord) (dec (:start coord)) (:end coord) gene-name))))))))
     bed-file))
 
 (defn get-coord-bed
