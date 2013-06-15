@@ -127,10 +127,10 @@
         [:exome :coverage :avg-reads]
         [:wgs :coverage :percent-nocoverage]
         [:exome :coverage :percent-nocoverage]
-        [:wgs :coverage :variant-compare :covered]
         [:exome :coverage :variant-compare :covered]
-        [:wgs :coverage :variant-compare :uncovered]
+        [:wgs :coverage :variant-compare :covered]
         [:exome :coverage :variant-compare :uncovered]
+        [:wgs :coverage :variant-compare :uncovered]
         [:wgs :variant :unique]
         [:exome :variant :unique]]))
 
@@ -138,8 +138,8 @@
   "Flatten comparisons between WGS and exome into CSV output, one line per gene."
   [cmps out-file]
   (let [header ["gene", "size" "wgs_avg_reads" "exome_avg_reads" "wgs_pct_nocov"
-                "exome_pct_nocov", "wgs_highaf_var_shared" "exome_highaf_var_shared"
-                "wgs_highaf_var_unique" "exome_highaf_var_unique"
+                "exome_pct_nocov", "wgs_highaf_var_covered" "exome_highaf_var_covered"
+                "wgs_highaf_var_uncovered" "exome_highaf_var_uncovered"
                 "wgs_var_unique" "exome_var_unique"]]
     (with-open [wtr (io/writer out-file)]
       (csv/write-csv wtr (cons header (map cmp->csv cmps))))))
@@ -167,10 +167,11 @@
   (let [out-file (str (itx/file-root csv-file) ".png")
         cmp-ready (cmps->dataset cmps params)
         plot (icharts/scatter-plot :wgs :exome :data (:ds cmp-ready) :group-by :top
+                                   :title "Percentage of uncovered bases in exon regions"
                                    :x-label "WGS" :y-label "exome")]
     (doseq [x (:top cmp-ready)]
-      (icharts/add-text plot (:wgs x) (- (:exome x) 3) (:gene x)))
-    (icore/save plot out-file)
+      (icharts/add-text plot (+ (:wgs x) 3) (- (:exome x) 1) (:gene x)))
+    (icore/save plot out-file :width 800 :height 800)
     out-file))
 
 (defn compare-from-config

@@ -103,7 +103,9 @@
 (defn prep-bam-region-iter
   "create an iterator returning GATK AlignmentContexts over the provided locus coordinates.
    Navigates the depths of GATK classes to provide a simple way to get pileups at
-   each position in a set of BAM files."
+   each position in a set of BAM files. Traverses the following abstraction layers in GATK:
+   BAM file -> SAMDataSource -> LocusShard -> WindowMaker ->
+    LocusShardDataProvider -> CoveredLocusView"
   [bam-files ref-file coords & {:keys [filters downsample]
                                :or {filters [:duplicate :vendor-quality :not-primary :unmapped]}}]
   (let [sample-names (mapcat get-sample-names bam-files)

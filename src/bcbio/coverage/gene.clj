@@ -133,7 +133,7 @@
     {:count (count (filter :low cov))
      :coord coord
      :blocks (identify-nocoverage-blocks (->> cov (filter :low) (map :i)) params)
-     :coverages (map :n cov)
+     :coverages (map :n (filter :high cov))
      :size (- (:end coord) (:start coord))}))
 
 (defn coverage-report-bygene
