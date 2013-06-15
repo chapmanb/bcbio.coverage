@@ -11,6 +11,7 @@
             [bcbio.coverage.io.bed :as bed]
             [bcbio.coverage.source.esp :as esp]
             [bcbio.run.itx :as itx]
+            [bcbio.run.parallel :refer [rmap]]
             [bcbio.variation.variantcontext :as gvc]))
 
 ;; ## Reports
@@ -18,11 +19,12 @@
 (defn- variant-coverage
   "Calculate coverage of a defined set of variant coordinates."
   [in-files vrn-coords ref-file params]
-  (reduce (fn [coll coord]
-            (let [n (-> (gene/get-coverage in-files coord ref-file params) first :n)
-                  kw (if (< n (:coverage params 10.0)) :uncovered :covered)]
+  (reduce (fn [coll n]
+            (let [kw (if (< n (:coverage params 10.0)) :uncovered :covered)]
               (assoc coll kw (inc (get coll kw)))))
-          {:uncovered 0 :covered 0} vrn-coords))
+          {:uncovered 0 :covered 0}
+          (rmap #(-> (gene/get-coverage in-files % ref-file params) first :n) vrn-coords
+                (get params :cores 1) (get params :chunk-size 1))))
 
 (defn- all-coverage-reports
   "Provide summary of coverage for all coordinates, grouping by gene names.
