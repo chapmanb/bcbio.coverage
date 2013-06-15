@@ -178,11 +178,11 @@
        :coords (->> regions
                     (map :coord)
                     (map #(select-keys % [:chr :start :end])))
-       :avg-reads (istat/mean (mapcat :coverages regions))
+       :avg-reads (format "%.1f" (istat/mean (mapcat :coverages regions)))
        :blocks (mapcat :blocks regions)
        :size (apply + (map :size regions))
-       :percent-nocoverage (* 100.0 (/ (apply + (map :count regions))
-                                       (apply + (map :size regions))))})))
+       :percent-nocoverage (format "%.1f" (* 100.0 (/ (apply + (map :count regions))
+                                                      (apply + (map :size regions)))))})))
 
 (defn problem-coverage
   "Identify problematic coverage for all supplied gene regions.

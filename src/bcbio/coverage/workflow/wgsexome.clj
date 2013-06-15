@@ -153,8 +153,8 @@
         (->> cmps
              (map (fn [x]
                     {:gene (get-in x [:wgs :coverage :name])
-                     :wgs (get-in x [:wgs :coverage :percent-nocoverage])
-                     :exome (get-in x [:exome :coverage :percent-nocoverage])}))
+                     :wgs (Float/parseFloat (get-in x [:wgs :coverage :percent-nocoverage]))
+                     :exome (Float/parseFloat (get-in x [:exome :coverage :percent-nocoverage]))}))
              (sort-by #(Math/abs (- (:wgs %) (:exome %))))
              (split-at (get params :top-diffs 10)))]
     {:ds (icore/to-dataset (concat
