@@ -57,12 +57,22 @@
                      (sort-by :count >)
                      (map :g)
                      first)]
-    (->> gene
-         ens/gene-transcripts
-         (filter #(= "protein_coding" (.getBiotype %)))
-         (mapcat transcript->translated-coords)
-         bed/merge-intervals)
+    {:gene-name gene-name
+     :coords (->> gene
+                  ens/gene-transcripts
+                  (filter #(= "protein_coding" (.getBiotype %)))
+                  (mapcat transcript->translated-coords)
+                  bed/merge-intervals)}
     (throw (Exception. (format "Did not find Gene information for %s in Ensembl" gene-name)))))
+
+(defn- gene-str->coding-coords
+  "Identify coding coordinates for gene information from line of text."
+  [line params]
+  (ens/with-registry (ens/registry :ensembldb)
+    (-> line
+        (string/split #"\s+")
+        first string/trimr
+        (fetch-coding-coords params))))
 
 (defn- genes->coding-bed
   "Convert a file of gene names into a BED file with coding coordinates."
@@ -72,11 +82,11 @@
       (itx/with-tx-file [tx-bed-file bed-file]
         (with-open [rdr (io/reader gene-file)
                     wtr (io/writer tx-bed-file)]
-          (ens/with-registry (ens/registry :ensembldb)
-            (doseq [gene-name (map #(-> % (string/split #"\s+") first string/trimr) (line-seq rdr))]
-              (doseq [coord (fetch-coding-coords gene-name params)]
-                (.write wtr (format "%s\t%s\t%s\t%s\n"
-                                    (:chr coord) (dec (:start coord)) (:end coord) gene-name))))))))
+          (doseq [{:keys [gene-name coords]} (rmap #(gene-str->coding-coords % params) (line-seq rdr)
+                                                   (get params :cores 1) (get params :chunk-size 1))]
+            (doseq [coord coords]
+              (.write wtr (format "%s\t%s\t%s\t%s\n"
+                                  (:chr coord) (dec (:start coord)) (:end coord) gene-name)))))))
     bed-file))
 
 (defn get-coord-bed

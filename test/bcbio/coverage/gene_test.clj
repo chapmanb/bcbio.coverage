@@ -35,7 +35,7 @@
     (itx/remove-path name-exon-file)
     (gene/get-coord-bed gene-bed {}) => gene-bed
     ;; Test calls out to Ensembl, slow
-    ;; (gene/get-coord-bed name-file {:organism "human"}) => name-exon-file
+    ;(gene/get-coord-bed name-file {:organism "human" :cores 4}) => name-exon-file
     ))
 
 (facts "Manipulations for intervals and BED files"
