@@ -7,6 +7,7 @@
             [bcbio.coverage.io.bed :as bed]
             [bcbio.coverage.source.esp :as esp]
             [bcbio.coverage.workflow.wgsexome :as wgsexome]
+            [bcbio.coverage.workflow.multicompare :as multicompare]
             [bcbio.run.itx :as itx]))
 
 (background
@@ -59,6 +60,12 @@
         out-file (str (itx/file-root wgs-config) ".csv")]
     (itx/remove-path out-file)
     (wgsexome/compare-from-config wgs-config out-file) => out-file))
+
+(facts "Compare multiple coverage inputs"
+  (let [wgs-config (str (io/file data-dir "wgsexome-compare.yaml"))
+        out-file (str (itx/file-root wgs-config) "-multi.csv")]
+    (itx/remove-path out-file)
+    (multicompare/compare-from-config wgs-config out-file 1) => out-file))
 
 (facts "GATK based iterator over piled up read regions."
   (with-open [iter (bam/prep-bam-region-iter [bam-file] ref-file [{:chr "MT" :start 250 :end 300}])]

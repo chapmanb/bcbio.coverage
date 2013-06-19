@@ -1,0 +1,70 @@
+# Comparison of population whole genome sequencing data to multiple exome approaches
+---
+params:
+  species: human
+  coverage: 13
+  block:
+    min: 100
+    distance: 10
+regions: input/HR_Candidates_19mar2013.txt
+ref-file: /n/hsphS10/hsphfs1/chb/biodata/genomes/Hsapiens/GRCh37/seq/GRCh37.fa
+experiments:
+  - name: esp
+    samples:
+      - coverage: input/ESP6500SI-V2-coverage.bw
+  - name: agxt
+    samples:
+      - coverage: input/edgebio/AGXT_stats_average.bw
+  - name: ng
+    samples:
+      - coverage: input/edgebio/NG_stats_average.bw
+  - name: trueseq
+    samples:
+      - coverage: input/edgebio/TruSeq_stats_average.bw
+  - name: bcwgs
+    samples:
+      - name: 3286549
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/3286549/3286549_20121115_bcwgs-sort.bam
+      - name: 1380948
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/1380948/1380948_20121115_bcwgs-sort.bam
+      - name: 208429A
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/208429A/208429A_20121115_bcwgs-sort.bam
+      - name: 2960483
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/2960483/2960483_20121115_bcwgs-sort.bam
+      - name: 2047157
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/2047157/2047157_20121115_bcwgs-sort.bam
+      - name: 1387630
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/1387630/1387630_20121115_bcwgs-sort.bam
+      - name: 3539760
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/3539760/3539760_20121115_bcwgs-sort.bam
+      - name: 118788A
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/118788A/118788A_20121115_bcwgs-sort.bam
+      - name: 3374412
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/3374412/3374412_20121115_bcwgs-sort.bam
+      - name: 2952145
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/2952145/2952145_20121115_bcwgs-sort.bam
+      - name: 1837239
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/1837239/1837239_20121115_bcwgs-sort.bam
+      - name: 2109674
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/2109674/2109674_20121115_bcwgs-sort.bam
+      - name: 326458A
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/326458A/326458A_20121115_bcwgs-sort.bam
+      - name: 1970168
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/1970168/1970168_20121115_bcwgs-sort.bam
+      - name: 2376648
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/2376648/2376648_20121115_bcwgs-sort.bam
+      - name: 2978348
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/2978348/2978348_20121115_bcwgs-sort.bam
+      - name: 2040031
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/2040031/2040031_20121115_bcwgs-sort.bam
+      - name: 2343936
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/2343936/2343936_20121115_bcwgs-sort.bam
+      - name: 1604552
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/1604552/1604552_20121115_bcwgs-sort.bam
+      - name: 1193928
+        coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/1193928/1193928_20121115_bcwgs-sort.bam
+  - type: esp
+    variant: input/ESP6500SI-V2-combined.vcf
+    samples:
+      - name: esp
+        coverage: input/ESP6500SI-V2-coverage.bw

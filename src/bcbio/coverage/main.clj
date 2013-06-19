@@ -2,6 +2,7 @@
   "Main entry point for command line programs."
   (:require [clojure.string :as string]
             [bcbio.coverage.gene]
+            [bcbio.coverage.workflow.multicompare :as multicompare]
             [bcbio.coverage.workflow.wgsexome :as wgsexome])
   (:gen-class))
 
@@ -9,7 +10,8 @@
        :private true}
   main-map
   {:gene bcbio.coverage.gene/-main
-   :wgsexome wgsexome/-main})
+   :wgsexome wgsexome/-main
+   :compare multicompare/-main})
 
 (defn -main [& args]
   (if-let [main-fn (get main-map (keyword (first args)))]

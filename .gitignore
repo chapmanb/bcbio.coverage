@@ -15,4 +15,5 @@ test/data/*.bai
 test/data/*.dict
 test/data/*.idx
 test/data/wgsexome-compare.csv
+test/data/wgsexome-compare-multi.csv
 test/data/wgsexome-compare.png
