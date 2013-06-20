@@ -11,7 +11,7 @@
   main-map
   {:gene bcbio.coverage.gene/-main
    :wgsexome wgsexome/-main
-   :compare multicompare/-main})
+   :multicompare multicompare/-main})
 
 (defn -main [& args]
   (if-let [main-fn (get main-map (keyword (first args)))]

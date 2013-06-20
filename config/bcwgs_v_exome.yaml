@@ -3,7 +3,8 @@
 params:
   species: human
   maf-thresh: 20.5672
-  coverage: 10
+  af-thresh: 14.9
+  coverage: 20
   block:
     min: 100
     distance: 10

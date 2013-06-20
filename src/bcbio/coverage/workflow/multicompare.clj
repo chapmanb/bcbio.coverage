@@ -20,6 +20,7 @@
                             (gene/coverage-report-bygene (map :coverage (:samples exp))
                                                          coords ref-file params))))
              (group-by :name)
+             (sort-by first)
              (map second))))))
 
 (defn- cmp->csv

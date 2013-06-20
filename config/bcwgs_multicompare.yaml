@@ -14,13 +14,13 @@ experiments:
       - coverage: input/ESP6500SI-V2-coverage.bw
   - name: agxt
     samples:
-      - coverage: input/edgebio/AGXT_stats_average.bw
+      - coverage: input/edgebio/AGXT_stats_average-b37.bw
   - name: ng
     samples:
-      - coverage: input/edgebio/NG_stats_average.bw
+      - coverage: input/edgebio/NG_stats_average-b37.bw
   - name: trueseq
     samples:
-      - coverage: input/edgebio/TruSeq_stats_average.bw
+      - coverage: input/edgebio/TruSeq_stats_average-b37.bw
   - name: bcwgs
     samples:
       - name: 3286549
@@ -63,8 +63,3 @@ experiments:
         coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/1604552/1604552_20121115_bcwgs-sort.bam
       - name: 1193928
         coverage: /n/hsphS10/hsphfs1/chb/projects/breast_cancer_wgs/variantcall/work2/align/1193928/1193928_20121115_bcwgs-sort.bam
-  - type: esp
-    variant: input/ESP6500SI-V2-combined.vcf
-    samples:
-      - name: esp
-        coverage: input/ESP6500SI-V2-coverage.bw
