@@ -3,6 +3,7 @@
 params:
   species: human
   coverage: 13
+  transcripts: canonical
   block:
     min: 100
     distance: 10

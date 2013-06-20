@@ -60,6 +60,8 @@
     {:gene-name gene-name
      :coords (->> gene
                   ens/gene-transcripts
+                  (filter #(or (not= "canonical" (:transcripts params))
+                               (.isCanonical %)))
                   (filter #(= "protein_coding" (.getBiotype %)))
                   (mapcat transcript->translated-coords)
                   bed/merge-intervals)}
@@ -77,7 +79,8 @@
 (defn- genes->coding-bed
   "Convert a file of gene names into a BED file with coding coordinates."
   [gene-file params]
-  (let [bed-file (str (itx/file-root gene-file) "-exons.bed")]
+  (let [approach-str (if-let [x (:transcripts params)] (str "-" x) "")
+        bed-file (str (itx/file-root gene-file) "-exons" approach-str ".bed")]
     (when (itx/needs-run? bed-file)
       (itx/with-tx-file [tx-bed-file bed-file]
         (with-open [rdr (io/reader gene-file)
