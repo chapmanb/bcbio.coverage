@@ -9,6 +9,7 @@
             [incanter.core :as icore]
             [bcbio.coverage.gene :as gene]
             [bcbio.coverage.io.bed :as bed]
+            [bcbio.coverage.source.ensembl :as ensembl]
             [bcbio.coverage.source.esp :as esp]
             [bcbio.run.itx :as itx]
             [bcbio.run.parallel :refer [rmap]]
@@ -110,7 +111,7 @@
 (defn- do-compare
   "Compare a WGS and exome experiment in specific gene regions of interest."
   [wgs-config exome-config region-file ref-file params]
-  (let [gene-coord-file (gene/get-coord-bed region-file params)]
+  (let [gene-coord-file (ensembl/get-coord-bed region-file params)]
     (with-open [rdr (io/reader gene-coord-file)]
       (let [coords (vec (bed/get-iterator rdr))
             wgs-coverage (all-coverage-reports wgs-config coords ref-file params)

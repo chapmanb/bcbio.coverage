@@ -5,6 +5,7 @@
             [bcbio.coverage.gene :as gene]
             [bcbio.coverage.io.bam :as bam]
             [bcbio.coverage.io.bed :as bed]
+            [bcbio.coverage.source.ensembl :as ensembl]
             [bcbio.coverage.source.esp :as esp]
             [bcbio.coverage.workflow.wgsexome :as wgsexome]
             [bcbio.coverage.workflow.multicompare :as multicompare]
@@ -34,9 +35,9 @@
   (let [name-file (str (io/file data-dir "genenames.txt"))
         name-exon-file (str (io/file data-dir "genenames-exons.bed"))]
     (itx/remove-path name-exon-file)
-    (gene/get-coord-bed gene-bed {}) => gene-bed
+    (ensembl/get-coord-bed gene-bed {}) => gene-bed
     ;; Test calls out to Ensembl, slow
-    ;(gene/get-coord-bed name-file {:organism "human" :cores 4}) => name-exon-file
+    ;(ensembl/get-coord-bed name-file {:organism "human" :cores 4}) => name-exon-file
     ))
 
 (facts "Manipulations for intervals and BED files"

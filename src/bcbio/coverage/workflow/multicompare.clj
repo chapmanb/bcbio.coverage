@@ -6,12 +6,13 @@
             [clj-yaml.core :as yaml]
             [bcbio.coverage.gene :as gene]
             [bcbio.coverage.io.bed :as bed]
+            [bcbio.coverage.source.ensembl :as ensembl]
             [bcbio.run.itx :as itx]))
 
 (defn- do-compare
   "Compare multiple coverage approaches across set of regions."
   [exps region-file ref-file params]
-  (let [gene-coord-file (gene/get-coord-bed region-file params)]
+  (let [gene-coord-file (ensembl/get-coord-bed region-file params)]
     (with-open [rdr (io/reader gene-coord-file)]
       (let [coords (vec (bed/get-iterator rdr))]
         (->> exps
