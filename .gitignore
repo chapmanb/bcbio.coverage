@@ -17,3 +17,5 @@ test/data/*.idx
 test/data/wgsexome-compare.csv
 test/data/wgsexome-compare-multi.csv
 test/data/wgsexome-compare.png
+test/data/genenames-exons.bed
+test/data/mousegenes.txt

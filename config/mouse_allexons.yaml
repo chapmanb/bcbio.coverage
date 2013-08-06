@@ -1,0 +1,11 @@
+# Comparison of whole exome coverage across multiple mouse experiments
+---
+params:
+  species: mouse
+  regions: exons
+  coverage: 13
+  transcripts: canonical
+  block:
+    min: 100
+    distance: 10
+regions: mouse-allexons.txt

@@ -2,6 +2,7 @@
   "Tests for assessing coverage of reads on genes of interest."
   (:require [clojure.java.io :as io]
             [midje.sweet :refer :all]
+            [org.bioclojure.bio.ensembl.core :as ens]
             [bcbio.coverage.gene :as gene]
             [bcbio.coverage.io.bam :as bam]
             [bcbio.coverage.io.bed :as bed]
@@ -31,13 +32,17 @@
     (gene/problem-coverage bam-file gene-bed ref-file params) => nil
     (gene/problem-coverage bw-file gene-bed ref-file params) => nil))
 
+;(def test-registry (memoize #(ens/registry :ensembldb)))
+
 (facts "Convert gene names into coordinates"
   (let [name-file (str (io/file data-dir "genenames.txt"))
+        gene-file (str (io/file data-dir "mousegenes.txt"))
         name-exon-file (str (io/file data-dir "genenames-exons.bed"))]
     (itx/remove-path name-exon-file)
     (ensembl/get-coord-bed gene-bed {}) => gene-bed
     ;; Test calls out to Ensembl, slow
-    ;(ensembl/get-coord-bed name-file {:organism "human" :cores 4}) => name-exon-file
+    ;(ensembl/get-coord-bed name-file {:species "human" :cores 4}) => name-exon-file
+    ;(ensembl/coding-genes gene-file {:species "mouse"})
     ))
 
 (facts "Manipulations for intervals and BED files"

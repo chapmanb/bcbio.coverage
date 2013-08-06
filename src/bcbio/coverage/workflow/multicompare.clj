@@ -12,7 +12,9 @@
 (defn- do-compare
   "Compare multiple coverage approaches across set of regions."
   [exps region-file ref-file params]
-  (let [gene-coord-file (ensembl/get-coord-bed region-file params)]
+  (let [gene-coord-file (case (keyword (:regions params))
+                          :exons (ensembl/species-exon-coords region-file params)
+                          (ensembl/get-coord-bed region-file params))]
     (with-open [rdr (io/reader gene-coord-file)]
       (let [coords (vec (bed/get-iterator rdr))]
         (->> exps
