@@ -146,7 +146,8 @@
             (doseq [chr-file chr-files]
               (with-open [rdr (io/reader chr-file)]
                 (doseq [line (line-seq rdr)]
-                  (.write wtr (str line "\n")))))))))))
+                  (.write wtr (str line "\n"))))))))))
+  out-file)
 
 (defn species-exon-coords
   "Retrieve the exon coordinates for conserved transcript regions in an organism.
