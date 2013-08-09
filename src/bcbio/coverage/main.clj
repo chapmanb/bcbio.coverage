@@ -15,9 +15,11 @@
 
 (defn -main [& args]
   (if-let [main-fn (get main-map (keyword (first args)))]
-    (apply main-fn (rest args))
+    (try
+      (apply main-fn (rest args))
+      (finally
+        (shutdown-agents)))
     (do
       (println (str "Unexpected command: '" (first args) "' "
                     "Available commands: " (string/join ", " (map name (keys main-map)))))))
-  (shutdown-agents)
-  (System/exit 0))
+   (System/exit 0))
