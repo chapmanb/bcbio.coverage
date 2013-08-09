@@ -2,6 +2,7 @@
 ---
 params:
   species: human
+  build: GRCh37
   maf-thresh: 20.5672
   af-thresh: 14.9
   coverage: 20

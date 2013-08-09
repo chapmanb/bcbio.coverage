@@ -2,6 +2,7 @@
 ---
 params:
   species: human
+  build: GRCh37
   coverage: 13
   transcripts: canonical
   block:

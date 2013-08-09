@@ -2,6 +2,7 @@
 ---
 params:
   species: mouse
+  build: GRCm38
   regions: exons
   coverage: 13
   transcripts: canonical

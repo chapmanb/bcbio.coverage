@@ -4,6 +4,7 @@
             [clojure.java.io :as io]
             [clojure.tools.cli :refer [cli]]
             [clj-yaml.core :as yaml]
+            [bcbio.align.remap :as remap]
             [bcbio.coverage.gene :as gene]
             [bcbio.coverage.io.bed :as bed]
             [bcbio.coverage.source.ensembl :as ensembl]
@@ -16,7 +17,7 @@
                           :exons (ensembl/species-exon-coords region-file params)
                           (ensembl/get-coord-bed region-file params))]
     (with-open [rdr (io/reader gene-coord-file)]
-      (let [coords (vec (bed/get-iterator rdr))]
+      (let [coords (remap/match-to-ref (bed/get-iterator rdr) (:build params) ref-file)]
         (->> exps
              (mapcat (fn [exp]
                        (map #(assoc % :exp (:name exp))
