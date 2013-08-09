@@ -6,7 +6,7 @@
 
 (def ^{:doc "Cached maps of UCSC to Ensembl coordinate conversion"
        :private true}
-  ucsc-maps
+  base-ucsc-maps
   {:GRCm38
    {"chrM" "MT", "chrUn_GL456359" "GL456359.1", "chrUn_GL456239"
    "GL456239.1", "chr7_GL456219_random" "GL456219.1",
@@ -71,8 +71,10 @@
    "chrUn_gl000242" "GL000242", "chrUn_gl000221" "GL000221", "chrUn_gl000232" "GL000232",
    "chrUn_gl000243" "GL000243"}})
 
-(assoc ucsc-maps :hg19 (map-invert (:GRCh37 ucsc-maps)))
-(assoc ucsc-maps :mm10 (map-invert (:GRCm38 ucsc-maps)))
+(def ucsc-maps
+  (-> base-ucsc-maps
+      (assoc :hg19 (map-invert (:GRCh37 base-ucsc-maps)))
+      (assoc :mm10 (map-invert (:GRCm38 base-ucsc-maps)))))
 
 (defn- fix-non-version-names
   "Convert any non-versioned names into the representative version in ref-dict."
