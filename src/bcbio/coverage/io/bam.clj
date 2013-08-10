@@ -76,15 +76,13 @@
 (defn- get-gatk-shards
   "Retrieve an iterator over GATK shard region of the genomes for specified locations."
   [data-source locs loc-parser]
-  (-> data-source
-      (.createShardIteratorOverIntervals (GenomeLocSortedSet. loc-parser locs)
-                                         (LocusShardBalancer.))
-      .iterator
-      iterator-seq))
+  (.createShardIteratorOverIntervals data-source
+                                     (GenomeLocSortedSet. loc-parser locs)
+                                     (LocusShardBalancer.)))
 
 (defn- get-gatk-views
   "Retrieve GATK LocusView objects for a given shard region of the genome."
-  [shard data-source loc-parser sample-names]
+  [shard data-source shard-balancer loc-parser sample-names]
   (let [wm (WindowMaker. shard loc-parser (.seek data-source shard)
                          (.getGenomeLocs shard) sample-names)
         windows (iterator-seq wm)]
@@ -92,6 +90,7 @@
            (let [dp (LocusShardDataProvider. shard (.getSourceInfo w) loc-parser
                                              (.getLocus w) w nil nil)]
              {:view  (CoveredLocusView. dp)
+              :sb shard-balancer
               :dp dp
               :wm wm}))
          windows)))
@@ -105,6 +104,8 @@
     (mapcat #(iterator-seq (:view %)) views))
   java.io.Closeable
   (close [_]
+    (doseq [sb (map :sb views)]
+      (.close sb))
     (doseq [view (map :view views)]
       (.close view))
     (doseq [dp (map :dp views)]
@@ -124,6 +125,7 @@
         loc-parser (GenomeLocParser. (gref/get-seq-dict ref-file))
         locs (map #(.createGenomeLoc loc-parser (:chr %) (:start %) (:end %)) coords)
         data-source (get-gatk-bam-source bam-files loc-parser filters downsample)
-        shards (get-gatk-shards data-source locs loc-parser)
-        views (mapcat #(get-gatk-views % data-source loc-parser sample-names) shards)]
+        shard-balancer (get-gatk-shards data-source locs loc-parser)
+        views (mapcat #(get-gatk-views % data-source shard-balancer loc-parser sample-names)
+                      (seq shard-balancer))]
     (GATKLocationIterator. views)))
