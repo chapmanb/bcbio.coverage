@@ -11,7 +11,7 @@
                  [org.clojars.chapmanb/sam "1.90"]
                  [org.clojars.chapmanb/tribble "1.90"]
                  [org.clojars.chapmanb/variant "1.90"]
-                 [org.clojars.chapmanb/gatk-lite "2.5.2"]
+                 [org.clojars.chapmanb/gatk-lite "2.6.5"]
                  [org.bioclojure/bio.ensembl "0.2.0"
                   :exclusions [uk.ac.roslin/ensembl-data-access uk.ac.roslin/ensembl-config]]
                  [uk.ac.roslin/ensembl-data-access "1.18"]
