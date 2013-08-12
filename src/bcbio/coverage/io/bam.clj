@@ -84,16 +84,16 @@
   "Retrieve GATK LocusView objects for a given shard region of the genome."
   [shard data-source shard-balancer loc-parser sample-names]
   (let [wm (WindowMaker. shard loc-parser (.seek data-source shard)
-                         (.getGenomeLocs shard) sample-names)
-        windows (iterator-seq wm)]
+                         (.getGenomeLocs shard) sample-names)]
     (map (fn [w]
            (let [dp (LocusShardDataProvider. shard (.getSourceInfo w) loc-parser
                                              (.getLocus w) w nil nil)]
-             {:view  (CoveredLocusView. dp)
+             {:view (CoveredLocusView. dp)
+              :ds data-source
               :sb shard-balancer
               :dp dp
               :wm wm}))
-         windows)))
+         (seq wm))))
 
 (defprotocol GATKIteration
   (get-align-contexts [this]))
@@ -101,7 +101,7 @@
 (defrecord GATKLocationIterator [views]
   GATKIteration
   (get-align-contexts [_]
-    (mapcat #(iterator-seq (:view %)) views))
+    (mapcat #(seq (:view %)) views))
   java.io.Closeable
   (close [_]
     (doseq [sb (map :sb views)]
@@ -111,7 +111,9 @@
     (doseq [dp (map :dp views)]
       (.close dp))
     (doseq [wm (map :wm views)]
-      (.close wm))))
+      (.close wm))
+    (doseq [ds (map :ds views)]
+      (.close ds))))
 
 (defn prep-bam-region-iter
   "create an iterator returning GATK AlignmentContexts over the provided locus coordinates.
